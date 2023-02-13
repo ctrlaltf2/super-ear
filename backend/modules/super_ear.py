@@ -14,6 +14,8 @@ class SuperEarApplication(tornado.web.Application):
         super(SuperEarApplication, self).__init__(*args, **kwargs)
         self.tcp_server = DSPServer()
         self.tcp_server.listen(options.dsp_port)
+        self.tcp_server.register_pluck_cb(self.on_pluck)
+        print("Main id(self):", id(self))
 
         self.add_handlers(
             r"^.*$",
@@ -21,3 +23,7 @@ class SuperEarApplication(tornado.web.Application):
                 (r"/", FrontendHandler),
             ],
         )
+
+    def on_pluck(self, data, address):
+        print("String pluck: ", data, "from", address)
+        print(f"id(self): {id(self)}")
