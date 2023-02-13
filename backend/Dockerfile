@@ -4,8 +4,9 @@ FROM python:3.11-alpine AS builder
 WORKDIR /code
 
 COPY requirements.txt /code
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install -r requirements.txt
+#RUN --mount=type=cache,target=/root/.cache/pip \
+#    pip3 install -r requirements.txt
+RUN pip3 install -r requirements.txt
 
 COPY . /code
 
@@ -14,16 +15,12 @@ CMD ["app.py"]
 
 FROM builder as dev-envs
 
-RUN <<EOF
-apk update
-apk add git bash
-EOF
+RUN apk update
+RUN apk add git bash
 
 # setup vscode support
-RUN <<EOF
-addgroup -S docker
-adduser -S --shell /bin/bash --ingroup docker vscode
-EOF
+RUN addgroup -S docker
+RUN adduser -S --shell /bin/bash --ingroup docker vscode
 
 # install docker tools
 COPY --from=gloursdocker/docker / /

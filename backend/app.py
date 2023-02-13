@@ -1,28 +1,28 @@
-import asyncio
+import logging
 
 import tornado.web
 
+import tornado.httpserver
+import tornado.ioloop
+from tornado.options import options
 
-class MainHandler(tornado.web.RequestHandler):
-    def get(self):
-        print("get")
-        self.write("Hello, world")
-
-
-def make_app():
-    return tornado.web.Application(
-        [
-            (r"/", MainHandler),
-        ]
-    )
+from modules.super_ear import SuperEarApplication
+from modules.dsp import DSPServer
 
 
-async def main():
-    app = make_app()
-    app.listen(8000)
-    await asyncio.Event().wait()
+logger = logging.getLogger(__name__)
+
+
+def tcpServer():
+    server = DSPServer()
+    server.listen(options.dsp_port)
+    return server
 
 
 if __name__ == "__main__":
-    print("Starting...")
-    asyncio.run(main())
+    options.parse_command_line()
+    app = SuperEarApplication()
+
+    server = tornado.httpserver.HTTPServer(app)
+    server.listen(8000)
+    tornado.ioloop.IOLoop.current().start()
