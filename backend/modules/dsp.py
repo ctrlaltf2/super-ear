@@ -70,6 +70,23 @@ class DSPServer(TCPServer):
                     # call the callback functions for plucking
                     for cb in self.on_pluck:
                         cb(frequency, address)
+                elif command == "INJECT" and (options.debug == True):
+                    (socket_address, _, payload) = payload.partition(" ")
+                    (ip, _, port) = socket_address.partition(":")
+
+                    lookup_address = (ip, int(port))
+                    logger.debug(f"Injecting data to {lookup_address}: '{payload}'")
+
+                    # Make sure connection is being looked up/tracked correctly & exists
+                    if lookup_address not in self.connections:
+                        yield stream.write(b"ERROR: No connection to that address\n")
+                        continue
+
+                    # Forward the data on that stream as bytes, decoded from utf-8
+                    yield self.connections[lookup_address].write(
+                        payload.encode("utf-8")
+                    )
+                    logger.debug(f"Sent data to {lookup_address}.")
                 else:
                     logger.warning(f"Received unknown command: {command}")
                     yield stream.write(b"UNKNOWN " + command.encode("utf-8") + b"\n")
