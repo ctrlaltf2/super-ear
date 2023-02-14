@@ -23,14 +23,23 @@ class DSPServer(TCPServer):
     # Callback functions called when user disconnects
     on_disconnect: list[Callable[[tuple], None]]
 
+    # Keep track of connections
+    connections: dict[tuple, IOStream]
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.on_pluck = []
+        self.connections = {}
+
         self.on_connect = []
         self.on_disconnect = []
+        self.on_pluck = []
 
     @gen.coroutine
     def handle_stream(self, stream, address):
+        # Store connection
+        assert address not in self.connections  # Shouldn't happen but just in case
+        self.connections[address] = stream
+
         # Call all connect callbacks
         for cb in self.on_connect:
             cb(address, stream)
@@ -72,14 +81,22 @@ class DSPServer(TCPServer):
             except StreamClosedError:
                 logger.warning(f"Lost client at host {address[0]}:{address[1]}")
 
-                # Call disconnect callbacks
-                for cb in self.on_disconnect:
-                    cb(address)
-
                 # Exit receive loop
                 break
             except Exception as e:
                 print(f"Uncaught exception in DSPServer: '{e}'")
+
+                # Exit receive loop
+                break
+
+        # Remove from connections
+        print(address)
+        assert address in self.connections  # Should be there but assumption of course
+        del self.connections[address]
+
+        # Call disconnect callbacks
+        for cb in self.on_disconnect:
+            cb(address)
 
     # Add a callback function to be called when a new guitar string pluck message is received
     def register_pluck_cb(self, cb):
