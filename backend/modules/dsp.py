@@ -3,7 +3,7 @@ import logging
 from typing import Callable
 
 from tornado import gen
-from tornado.iostream import StreamClosedError
+from tornado.iostream import StreamClosedError, IOStream
 from tornado.options import define
 from tornado.tcpserver import TCPServer
 
@@ -14,16 +14,27 @@ logger = logging.getLogger(__name__)
 
 
 class DSPServer(TCPServer):
-    # Callback function to be called when a new guitar string pluck message is received
+    # Callback functions to be called when a new guitar string pluck message is received
     on_pluck: list[Callable[[float, tuple], None]]
+
+    # Callback functions called when user connects
+    on_connect: list[Callable[[tuple, IOStream], None]]
+
+    # Callback functions called when user disconnects
+    on_disconnect: list[Callable[[tuple], None]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.on_pluck = []
+        self.on_connect = []
+        self.on_disconnect = []
 
     @gen.coroutine
     def handle_stream(self, stream, address):
-        ## Do a simple echo back
+        # Call all connect callbacks
+        for cb in self.on_connect:
+            cb(address, stream)
+
         while True:
             try:
                 # Implementation-defined algorithm begins here
@@ -60,10 +71,24 @@ class DSPServer(TCPServer):
 
             except StreamClosedError:
                 logger.warning(f"Lost client at host {address[0]}:{address[1]}")
+
+                # Call disconnect callbacks
+                for cb in self.on_disconnect:
+                    cb(address)
+
+                # Exit receive loop
                 break
             except Exception as e:
-                print(e)
+                print(f"Uncaught exception in DSPServer: '{e}'")
 
     # Add a callback function to be called when a new guitar string pluck message is received
     def register_pluck_cb(self, cb):
         self.on_pluck.append(cb)
+
+    # Add a callback function to be called when a user connects. Takes full address and IOStream
+    def register_connect_cb(self, cb):
+        self.on_connect.append(cb)
+
+    # Add a callback function to be called when a user disconnects. Takes full address of socket
+    def register_disconnect_cb(self, cb):
+        self.on_disconnect.append(cb)
