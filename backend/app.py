@@ -4,12 +4,13 @@ import tornado.web
 
 import tornado.httpserver
 import tornado.ioloop
-from tornado.options import options
+from tornado.options import options, define
 
 from modules.super_ear import SuperEarApplication
 from modules.dsp import DSPServer
 
 
+define("debug", default=False, help="Debug mode for the application")
 logger = logging.getLogger(__name__)
 
 
