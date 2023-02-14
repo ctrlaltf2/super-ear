@@ -184,6 +184,10 @@ class SPN:
         note_int = round(12 * math.log2(freq / 440) + 57)
         return SPN.from_int(note_int)
 
+    def to_freq(self):
+        # Inversion of from_freq
+        return 440 * 2 ** ((int(self) - 57) / 12)
+
     # -- Operators
     def __lt__(self, other):
         return int(self) < int(other)
