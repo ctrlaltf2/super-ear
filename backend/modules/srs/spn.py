@@ -1,5 +1,7 @@
-from enum import Enum
+import math
 import re
+
+from enum import Enum
 
 # ref: https://en.wikipedia.org/wiki/Scientific_pitch_notation
 
@@ -174,6 +176,12 @@ class SPN:
         note_int = int(spn_unnormalized)
 
         # Return the normalized version (normalized as in matches key on piano)
+        return SPN.from_int(note_int)
+
+    @staticmethod
+    def from_freq(freq: float):
+        # https://en.wikipedia.org/wiki/Piano_key_frequencies (adapted for my key numberings)
+        note_int = round(12 * math.log2(freq / 440) + 57)
         return SPN.from_int(note_int)
 
     # -- Operators
