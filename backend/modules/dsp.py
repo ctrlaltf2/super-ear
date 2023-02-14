@@ -3,8 +3,8 @@ import logging
 from typing import Callable
 
 from tornado import gen
-from tornado.iostream import StreamClosedError, IOStream
-from tornado.options import define
+from tornado.iostream import IOStream, StreamClosedError
+from tornado.options import define, options
 from tornado.tcpserver import TCPServer
 
 # Main class used to listen and communicate with the DSP
@@ -46,7 +46,7 @@ class DSPServer(TCPServer):
                     decoded_data = data.decode("utf-8").strip()
                 except UnicodeError:
                     logger.warning(f"Received invalid UTF-8 data: 0x{data.hex()}")
-                    continue  # TODO: send error message to DSP?
+                    continue  # TODO: send structured error message to DSP?
 
                 # Parse command & payload
                 (command, _, payload) = decoded_data.partition(" ")
@@ -56,7 +56,7 @@ class DSPServer(TCPServer):
                         frequency = float(payload)
                     except ValueError:
                         logger.warning(f"Received invalid frequency: {payload}")
-                        continue  # TODO: send error message to DSP?
+                        continue  # TODO: send structured error message to DSP?
 
                     # call the callback functions for plucking
                     for cb in self.on_pluck:
@@ -64,7 +64,7 @@ class DSPServer(TCPServer):
                 else:
                     logger.warning(f"Received unknown command: {command}")
                     yield stream.write(b"UNKNOWN " + command.encode("utf-8") + b"\n")
-                    continue  # TODO: send error message to DSP?
+                    continue  # TODO: send structured error message to DSP?
 
                 # Echo back an acknowledgement
                 yield stream.write(b"ACK " + data)

@@ -52,7 +52,6 @@ class SuperEarApplication(tornado.web.Application):
         )  # Assumption made, shouldn't happen I think
 
         self.dsp_connections[address] = stream
-        print(f"connections is now {self.dsp_connections}")
 
     # Callback function for when a DSP disconnects
     def on_dsp_disconnect(self, address: tuple):
@@ -63,4 +62,3 @@ class SuperEarApplication(tornado.web.Application):
         )  # Assumption made, again shouldn't happen I think
 
         del self.dsp_connections[address]
-        print(f"connections is now {self.dsp_connections}")
