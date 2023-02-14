@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class DSPServer(TCPServer):
     # Callback function to be called when a new guitar string pluck message is received
-    on_pluck: list[Callable[[str, tuple], None]]
+    on_pluck: list[Callable[[float, tuple], None]]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -29,20 +29,31 @@ class DSPServer(TCPServer):
                 # Implementation-defined algorithm begins here
                 data = yield stream.read_until(b"\n")
 
-                # Force a newline at the end
-                if not data.endswith(b"\n"):
-                    data = data + b"\n"
-
                 # Attempt to decode a UTF-8 string from the data
                 try:
+                    print("trying")
                     decoded_data = data.decode("utf-8").strip()
                 except UnicodeError:
                     logger.warning(f"Received invalid UTF-8 data: 0x{data.hex()}")
                     continue  # TODO: send error message to DSP?
 
-                # Assume that the data is a guitar string pluck message and call the callback functions
-                for cb in self.on_pluck:
-                    cb(decoded_data, address)
+                # Parse command & payload
+                (command, _, payload) = decoded_data.partition(" ")
+
+                if command == "PLUCK":
+                    try:
+                        frequency = float(payload)
+                    except ValueError:
+                        logger.warning(f"Received invalid frequency: {payload}")
+                        continue  # TODO: send error message to DSP?
+
+                    # call the callback functions for plucking
+                    for cb in self.on_pluck:
+                        cb(frequency, address)
+                else:
+                    logger.warning(f"Received unknown command: {command}")
+                    yield stream.write(b"UNKNOWN " + command.encode("utf-8") + b"\n")
+                    continue  # TODO: send error message to DSP?
 
                 # Echo back an acknowledgement
                 yield stream.write(b"ACK " + data)

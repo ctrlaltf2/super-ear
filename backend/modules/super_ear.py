@@ -24,6 +24,6 @@ class SuperEarApplication(tornado.web.Application):
             ],
         )
 
-    def on_pluck(self, data, address):
-        print("String pluck: ", data, "from", address)
+    def on_pluck(self, data: float, address: tuple):
+        print("String pluck: ", data * 2, "from", address)
         print(f"id(self): {id(self)}")
