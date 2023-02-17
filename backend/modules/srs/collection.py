@@ -1,3 +1,5 @@
+from typing import Any, Optional
+
 from modules.srs.track import Track
 
 
@@ -8,6 +10,9 @@ class Collection:
 
     # Index of the active track
     _active_track_index: int = 0
+
+    # Learning queue, used to store the next set of items to review
+    learning_queue: Optional[Any]
 
     def __init__(self, tracks: list[Track]):
         self.tracks = tracks
