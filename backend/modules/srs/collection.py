@@ -1,3 +1,5 @@
+import datetime
+
 from typing import Any, Optional
 
 from modules.srs.track import Track
@@ -9,13 +11,16 @@ class Collection:
     tracks: list[Track]
 
     # Index of the active track
-    _active_track_index: int = 0
+    active_track_index: int = 0
 
-    # Learning queue, used to store the next set of items to review
-    learning_queue: Optional[Any]
+    # Epoch for the collection
+    epoch: datetime.datetime
 
-    def __init__(self, tracks: list[Track]):
+    def __init__(self, tracks: list[Track], **kwargs):
         self.tracks = tracks
+
+        self.active_track_index = kwargs.get("active_track_index", 0)
+        self.epoch = kwargs.get("epoch", datetime.datetime.now())
 
     def add(self, item: Track):
         self.tracks.append(item)
