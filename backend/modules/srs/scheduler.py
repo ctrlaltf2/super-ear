@@ -41,10 +41,15 @@ class Scheduler(ABC):
     def get_due_items(_collection: Collection) -> Optional[list[ReviewItem]]:
         pass
 
-    # Reviews an item, returning a reviewed copy
+    # Reviews an item, updating its scheduler parameters
     @staticmethod
     @abstractmethod
-    def review(_item: ReviewItem, note_distance: int, ms_elapsed: int) -> ReviewItem:
+    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> None:
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
         pass
 
 
@@ -174,7 +179,12 @@ class V1(Scheduler):
 
     # Reviews an item, returning a reviewed copy
     @staticmethod
-    def review(_item: ReviewItem, note_distance: int, ms_elapsed: int) -> ReviewItem:
+    def review(item: ReviewItem, note_distance: int, ms_elapsed: int):
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
         pass
 
 
@@ -201,9 +211,9 @@ class Driver:
 
         # session.state = reviewing
 
-        while len(reviewing_queue) > 0:
+        while not reviewing_queue.empty():
             # Get the next item to review
-            next_item: ReviewItem = scheduler.get_next_item(user_collection)
+            next_item: ReviewItem = reviewing_queue.get()
 
             # session.state -> awaiting_response
             # Send a request to the user to review the item
@@ -215,15 +225,11 @@ class Driver:
             # session.state -> scoring
             note_distance = abs(response - next_item.content)
 
-            next_interval = scheduler.calculate_interval(next_item, note_distance, 0)
+            scheduler.review(next_item, note_distance, 0)
 
-            # Update last review time
-            next_item.last_review = None  # TODO: current time UTC
-
-            # put into learning queue
-            # TODO: priority queue insert
-
-            reviewing_queue = scheduler.generate_reviewing_queue(user_collection)
+            due_date = scheduler.get_due_date(next_item)
+            if due_date < datetime.datetime.now(datetime.timezone.utc):
+                reviewing_queue.put(OrderedReviewItem(next_item, due_date))
 
             # session.state -> reviewing
 

@@ -25,11 +25,18 @@ class ReviewItem:
     # ReviewItem content
     content: Any
 
-    # Last review time (UTC time) (optional)
-    last_review: Optional[datetime.datetime]
+    # Last review time (minutes delta since collection's epoch)
+    last_review: Optional[int]
 
-    # Note: No time delta is used here because the scheduler will be responsible and calculate
-    # it during each review session
+    # Ease-factor / difficulty of the item, captured as a float. No dimensions.
+    # Initialized to 2.5, since that's the default in Anki & SM-2.
+    ease_factor: float
+
+    # The interval fpr the next review. Added to owning collection's epoch. In minutes.
+    interval_next_review: Optional[int]
+
+    # Note: No time delta is used here because the scheduler will be
+    # responsible and calculate it during each review session
 
     def __init__(self, content: Any, **kwargs):
         self.state = kwargs.get("state", ReviewState.Unseen)
@@ -39,8 +46,11 @@ class ReviewItem:
         )
         self.content = content
         self.last_review = kwargs.get("last_review", None)
+        self.ease_factor = kwargs.get("ease_factor", 2.5)
+        self.interval_next_review = kwargs.get("interval_next_review", None)
 
-    # equality comparisons are based on the content, not the scheduler parameters
+    # equality comparisons are based on the content,
+    # not the scheduler parameters
     def __eq__(self, other: Self) -> bool:
         return self.content == other.content
 
