@@ -13,7 +13,6 @@ from modules.srs.spn import SPN
 
 # Generic interface for spaced-repetition schedulers
 # Will be used to test out different scheduling algorithms
-# Takes a mostly functional design with no side effects
 
 
 class Scheduler(ABC):
@@ -23,30 +22,13 @@ class Scheduler(ABC):
     def generate_reviewing_queue(_collection: Collection) -> Optional[Any]:
         pass
 
-    # Retrieves the next item to review
-    @staticmethod
-    @abstractmethod
-    def get_next_note(_collection: Collection) -> Optional[ReviewItem]:
-        pass
-
-    # Gets the next set of unseen items.
-    @staticmethod
-    @abstractmethod
-    def get_next_unseen_items(_collection: Collection) -> Optional[list[ReviewItem]]:
-        pass
-
-    # Gets the set of items that are due for review
-    @staticmethod
-    @abstractmethod
-    def get_due_items(_collection: Collection) -> Optional[list[ReviewItem]]:
-        pass
-
     # Reviews an item, updating its scheduler parameters
     @staticmethod
     @abstractmethod
     def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> None:
         pass
 
+    # Gets the next due date for an item. Ideally, generate_reviewing_queue uses this.
     @staticmethod
     @abstractmethod
     def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
@@ -84,32 +66,124 @@ class V1(Scheduler):
     ) -> PriorityQueue[OrderedReviewItem]:
         # Store a current timestamp to assign to unseen items
         now = datetime.datetime.now(datetime.timezone.utc)
+        # TODO: Time zone should match system time zone, conversion needed here
+        tomorrow = datetime.datetime(
+            year=now.year, month=now.month, day=now.day, tzinfo=datetime.timezone.utc
+        ) + datetime.timedelta(days=1)
 
         # Get all items first
         review_items = _collection.get_active_track().review_items
 
+        # Split into new/learning/review items
+        all_new_items = [
+            OrderedReviewItem(item, V1.get_due_date(_collection, item))
+            for item in review_items
+            if item.state == ReviewState.Unseen
+        ]
+        all_learning_items = [
+            OrderedReviewItem(item, V1.get_due_date(_collection, item))
+            for item in review_items
+            if item.state == ReviewState.Learning
+        ]
+        all_reviewing_items = [
+            OrderedReviewItem(item, V1.get_due_date(_collection, item))
+            for item in review_items
+            if item.state == ReviewState.Reviewing
+        ]
+
+        # TODO: Take into account the current day & the collections last review times to use the max review limits appropriately, to be per day and not per session
+        new_items_today = all_new_items[: _collection.max_new_per_day]
+
+        # For learning/review, get items due before EOD current day
+        learning_items_today = [
+            item for item in all_learning_items if item.due_date < tomorrow
+        ]
+
+        reviewing_items_today = [
+            item for item in all_reviewing_items if item.due_date < tomorrow
+        ]
+
         # Generate a priority queue of items sorted by due date
         queue: PriorityQueue[OrderedReviewItem] = PriorityQueue()
 
-        for item in review_items:
-            # Compute the due date. If the item is unseen, use the current timestamp
-            if item.last_review is None:
-                due_date = now
-            else:
-                due_date = (
-                    V1.calculate_interval(item)
-                    + item.last_review
-                    + datetime.timedelta(
-                        seconds=random.random() * 4 - 2
-                    )  # Add some jitter
-                )
+        # TODO: Restructure to make this take into account _collection.do_mix_new_review. Currently is implicit on the scheduler's due_dates, of which this sorts
+        # Use a doubly-keyed sort? State then by due_date within that state.
+        for item in new_items_today + learning_items_today + reviewing_items_today:
+            queue.put(item)
 
-            queue.put(OrderedReviewItem(item, due_date))
-
+        """
+        due_date = (
+            V1._calculate_interval(item)
+            + item.last_review
+            + datetime.timedelta(
+                seconds=random.random() * 4 - 2
+            )  # Add some jitter
+        )
+        """
         return queue
 
+    # pure
     @staticmethod
-    def calculate_interval(_item: ReviewItem) -> datetime.timedelta:
+    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
+        if _item.last_review is not None:  # triggers for learning and reviewing items
+            last_review_date = _collection.epoch + datetime.timedelta(
+                days=_item.last_review
+            )
+
+            return last_review_date + V1._calculate_interval(_item)
+        else:  # triggers for unseen items
+            return datetime.datetime.now(
+                datetime.timezone.utc
+            ) + V1._calculate_interval(_item)
+
+    # helper to map numbers from one range to another proportionally
+    # cf. arduino map
+    @staticmethod
+    def _map_range(x, c_in, c_out):
+        in_min, in_max = c_in
+        out_min, out_max = c_out
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+    # Reviews an item, returning a reviewed copy
+    # not pure / side effects- modifies ease factor and last review time, last interval
+    @staticmethod
+    def review(item: ReviewItem, note_distance: int, ms_elapsed: int):
+        # Update last interval
+        last_interval = V1._calculate_interval(item)
+        item.current_interval = last_interval / datetime.timedelta(
+            days=1
+        )  # get # days as float
+
+        # Update ease factor
+        # ref: SM-2 algorithm, http://super-memory.com/english/ol/sm2.htm
+        # clamp note distance to 0-5
+        err = float(note_distance)
+        err = max(0, min(5, err))
+
+        # Map correctness into SM-2's interpretation of correctness
+        if err > 0.001:  # mark as incorrect- [3,4,5]
+            # output_range = [3, 5]
+            # input_range = [1, 5]
+            err = V1._map_range(err, (1.0, 5.0), (3.0, 5.0))
+            # TODO: take into account ms_elapsed. Currently output set is {0.0} U [3.0, 5.0]
+            # SM-2 in some cases takes into account time elapsed for err:
+            #  - q=0 ->   correct and fast
+            #  - q=1 ->   correct, but hesitated
+            #  - q=2 ->   correct, but slow
+            #  - q=3 -> incorrect, but correct is easy to recall
+            #  - q=4 -> incorrect, correct one is at least remembered
+            #  - q=5 -> incorrect, correct is unheard of
+            #
+            # [0, 2] are able to be mapped into using ms_elapsed, but [3, 5] are not
+
+        item.ease_factor = max(
+            1.3,
+            item.ease_factor + (0.1 - err * (0.08 + err * 0.02)),
+        )
+
+    # pure
+    @staticmethod
+    def _calculate_interval(_item: ReviewItem) -> datetime.timedelta:
         match _item.state:
             case ReviewState.Unseen:
                 return V1._unseen_interval(_item)
@@ -118,74 +192,28 @@ class V1(Scheduler):
             case ReviewState.Reviewing:
                 return V1._reviewing_interval(_item)
 
+    # pure
     @staticmethod
-    def _unseen_interval(_item: ReviewItem) -> datetime.timedelta:
-        pass
+    def _unseen_interval(_item: ReviewItem, mx=8) -> datetime.timedelta:
+        ## Add a random number of seconds to add some jitter to the due date for unseen items
+        return datetime.timedelta(seconds=random.random() * 2 * mx - mx)
 
+    # pure
     @staticmethod
     def _learning_interval(_item: ReviewItem) -> datetime.timedelta:
         return datetime.timedelta(minutes=_item.learning_steps[_item.learning_index])
 
+    # pure
     @staticmethod
     def _reviewing_interval(_item: ReviewItem) -> datetime.timedelta:
-        pass
+        # ref: http://super-memory.com/english/ol/sm2.htm because Anki's algo is a bit opaque (tech debt from supporting all its features)
+        # SM-2 is the basis of Anki, so formulas are very similar
+        if _item.current_interval is None:
+            current_interval = _item.learning_steps[-1]
+        else:
+            current_interval = _item.current_interval
 
-    # Retrieves the next item to review
-    @staticmethod
-    def get_next_note(_collection: Collection) -> Optional[ReviewItem]:
-        if _collection.learning_queue is None:
-            raise ValueError("Learning queue is uninitialized")
-
-        if len(_collection.learning_queue) == 0:
-            raise ValueError("Learning queue is empty")
-
-        return _collection.learning_queue[0]
-
-    # Gets the next set of unseen items.
-    @staticmethod
-    def get_next_unseen_items(_collection: Collection) -> Optional[list[ReviewItem]]:
-        # Get the active track
-        _track = _collection.get_active_track()
-
-        # Get the unseen items
-        unseen_items = list(
-            filter(  # Filter out items that are not in the unseen state
-                lambda review_item: review_item.state == ReviewState.Unseen,
-                _track.review_items,
-            )
-        )
-
-        # If there are no unseen items, return None
-        if len(unseen_items) == 0:
-            return None
-
-        # Get the number of unseen items to return
-        # If the number of unseen items is less than the number of items to return,
-        # return all of the unseen items
-        num_items_to_return = min(len(unseen_items), V1.n_new_items_today(_collection))
-
-        # Return the first num_items_to_return unseen items
-        return unseen_items[:num_items_to_return]
-
-    # Returns the number of unseen items that can be studied at this time (day)
-    @staticmethod
-    def n_new_items_today(_collection: Collection) -> int:
-        return 3  # TODO: Implement
-
-    # Gets the set of items that are due for review
-    @staticmethod
-    def get_due_items(_collection: Collection) -> Optional[list[ReviewItem]]:
-        pass
-
-    # Reviews an item, returning a reviewed copy
-    @staticmethod
-    def review(item: ReviewItem, note_distance: int, ms_elapsed: int):
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
-        pass
+        return datetime.timedelta(days=current_interval * _item.ease_factor)
 
 
 # Driver to help with scheduler API testing

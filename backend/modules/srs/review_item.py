@@ -32,8 +32,8 @@ class ReviewItem:
     # Initialized to 2.5, since that's the default in Anki & SM-2.
     ease_factor: float
 
-    # The interval fpr the next review. Added to owning collection's epoch. In minutes.
-    interval_next_review: Optional[int]
+    # The current interval, in days
+    current_interval: Optional[float]
 
     # Note: No time delta is used here because the scheduler will be
     # responsible and calculate it during each review session
@@ -43,11 +43,11 @@ class ReviewItem:
         self.learning_index = kwargs.get("learning_index", 0)
         self.learning_steps = kwargs.get(
             "learning_steps", [1 / 12, 5 / 12, 2, 10, 60, 300]
-        )
+        )  # default steps from recommended settings of https://ankiweb.net/shared/info/1250336138 (A ear training Anki deck)
         self.content = content
         self.last_review = kwargs.get("last_review", None)
         self.ease_factor = kwargs.get("ease_factor", 2.5)
-        self.interval_next_review = kwargs.get("interval_next_review", None)
+        self.current_interval = kwargs.get("current_interval", None)
 
     # equality comparisons are based on the content,
     # not the scheduler parameters
