@@ -1,18 +1,18 @@
 import datetime
+import heapq
+import logging
 import random
 
 from abc import ABC, abstractmethod
-from copy import deepcopy
-from queue import PriorityQueue
-from random import shuffle
 from typing import Any, Optional
 
 from modules.srs.collection import Collection
 from modules.srs.review_item import ReviewItem, ReviewState
-from modules.srs.spn import SPN
 
 # Generic interface for spaced-repetition schedulers
 # Will be used to test out different scheduling algorithms
+
+logger = logging.getLogger(__name__)
 
 
 class Scheduler(ABC):
@@ -63,7 +63,7 @@ class V1(Scheduler):
     @staticmethod
     def generate_reviewing_queue(
         _collection: Collection,
-    ) -> PriorityQueue[OrderedReviewItem]:
+    ) -> list[OrderedReviewItem]:
         # Store a current timestamp to assign to unseen items
         now = datetime.datetime.now(datetime.timezone.utc)
         # TODO: Time zone should match system time zone, conversion needed here
@@ -93,6 +93,8 @@ class V1(Scheduler):
 
         # TODO: Take into account the current day & the collections last review times to use the max review limits appropriately, to be per day and not per session
         new_items_today = all_new_items[: _collection.max_new_per_day]
+        for item in new_items_today:
+            item.item.state = ReviewState.Learning
 
         # For learning/review, get items due before EOD current day
         learning_items_today = [
@@ -104,22 +106,11 @@ class V1(Scheduler):
         ]
 
         # Generate a priority queue of items sorted by due date
-        queue: PriorityQueue[OrderedReviewItem] = PriorityQueue()
-
         # TODO: Restructure to make this take into account _collection.do_mix_new_review. Currently is implicit on the scheduler's due_dates, of which this sorts
         # Use a doubly-keyed sort? State then by due_date within that state.
-        for item in new_items_today + learning_items_today + reviewing_items_today:
-            queue.put(item)
+        queue = new_items_today + learning_items_today + reviewing_items_today
+        heapq.heapify(queue)
 
-        """
-        due_date = (
-            V1._calculate_interval(item)
-            + item.last_review
-            + datetime.timedelta(
-                seconds=random.random() * 4 - 2
-            )  # Add some jitter
-        )
-        """
         return queue
 
     # pure
@@ -148,38 +139,74 @@ class V1(Scheduler):
     # not pure / side effects- modifies ease factor and last review time, last interval
     @staticmethod
     def review(item: ReviewItem, note_distance: int, ms_elapsed: int):
-        # Update last interval
-        last_interval = V1._calculate_interval(item)
-        item.current_interval = last_interval / datetime.timedelta(
-            days=1
-        )  # get # days as float
-
+        # print(f"Reviewing item {item}")
         # Update ease factor
         # ref: SM-2 algorithm, http://super-memory.com/english/ol/sm2.htm
-        # clamp note distance to 0-5
         err = float(note_distance)
-        err = max(0, min(5, err))
+        err = max(0, min(5, err))  # clamp note distance to 0-5
 
-        # Map correctness into SM-2's interpretation of correctness
-        if err > 0.001:  # mark as incorrect- [3,4,5]
-            # output_range = [3, 5]
-            # input_range = [1, 5]
-            err = V1._map_range(err, (1.0, 5.0), (3.0, 5.0))
-            # TODO: take into account ms_elapsed. Currently output set is {0.0} U [3.0, 5.0]
-            # SM-2 in some cases takes into account time elapsed for err:
-            #  - q=0 ->   correct and fast
-            #  - q=1 ->   correct, but hesitated
-            #  - q=2 ->   correct, but slow
-            #  - q=3 -> incorrect, but correct is easy to recall
-            #  - q=4 -> incorrect, correct one is at least remembered
-            #  - q=5 -> incorrect, correct is unheard of
-            #
-            # [0, 2] are able to be mapped into using ms_elapsed, but [3, 5] are not
+        do_update_ef = True
 
-        item.ease_factor = max(
-            1.3,
-            item.ease_factor + (0.1 - err * (0.08 + err * 0.02)),
-        )
+        match item.state:
+            case ReviewState.Unseen:
+                print("Item is new")
+                item.state = ReviewState.Learning
+            case ReviewState.Learning:
+                print("Item is learning")
+                was_correct = note_distance <= 0.001
+
+                if was_correct:
+                    print("Item was correct")
+                    pass
+                else:
+                    print("Item was incorrect")
+                    pass
+
+                if was_correct:  # increment learning step // go to reviewing state
+                    if (
+                        item.learning_index >= len(item.learning_steps) - 1
+                    ):  # graduated?
+                        print("Item graduated")
+                        item.state = ReviewState.Reviewing
+                        item.learning_index = 0
+                        item.current_interval = datetime.timedelta(
+                            minutes=item.learning_steps[-1]
+                        ) / datetime.timedelta(days=1)
+                    else:  # move to next learning step
+                        print("Item moved to next learning step")
+                        item.learning_index += 1
+                else:  # reset learning step
+                    print("Item reset to first learning step")
+                    item.learning_index = 0
+
+            case ReviewState.Reviewing:
+                print("Item is reviewing")
+                # Map correctness into SM-2's interpretation of correctness
+                if err > 0.001:  # mark as incorrect- [3,4,5]
+                    err = V1._map_range(err, (1.0, 5.0), (3.0, 5.0))
+
+                # quality response (0-5)
+                q = 5 - err
+                print(f"SM-2 quality of {q}")
+
+                # step 6 of SM-2
+                if q < 3:  # start reps from beginning, -> learning
+                    print("SM-2 q < 3, resetting learning step")
+                    item.state = ReviewState.Learning
+                    item.learning_index = 0
+                    item.current_interval = None
+
+                # Update last interval
+                last_interval = V1._calculate_interval(item)
+                item.current_interval = last_interval / datetime.timedelta(
+                    days=1
+                )  # get # days as float
+
+                print("Updating ease factor")
+                item.ease_factor = max(
+                    1.3,
+                    item.ease_factor + (0.1 - err * (0.08 + err * 0.02)),
+                )
 
     # pure
     @staticmethod
@@ -195,7 +222,7 @@ class V1(Scheduler):
     # pure
     @staticmethod
     def _unseen_interval(_item: ReviewItem, mx=8) -> datetime.timedelta:
-        ## Add a random number of seconds to add some jitter to the due date for unseen items
+        # Add a random number of seconds to add some jitter to the due date for unseen items
         return datetime.timedelta(seconds=random.random() * 2 * mx - mx)
 
     # pure
@@ -208,12 +235,19 @@ class V1(Scheduler):
     def _reviewing_interval(_item: ReviewItem) -> datetime.timedelta:
         # ref: http://super-memory.com/english/ol/sm2.htm because Anki's algo is a bit opaque (tech debt from supporting all its features)
         # SM-2 is the basis of Anki, so formulas are very similar
+        last_interval: datetime.timedelta
         if _item.current_interval is None:
-            current_interval = _item.learning_steps[-1]
+            last_interval = datetime.timedelta(minutes=_item.learning_steps[-1])
         else:
-            current_interval = _item.current_interval
+            last_interval = datetime.timedelta(days=_item.current_interval)
 
-        return datetime.timedelta(days=current_interval * _item.ease_factor)
+        n_days: float = last_interval / datetime.timedelta(days=1)
+        days_ef: float = n_days * _item.ease_factor
+
+        # max days is 90d
+        days_ef = min(days_ef, 90)
+
+        return datetime.timedelta(days=days_ef)
 
 
 # Driver to help with scheduler API testing

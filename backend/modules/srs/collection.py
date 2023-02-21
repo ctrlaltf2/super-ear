@@ -63,5 +63,7 @@ class Collection:
                 if track.name == identifier:
                     self._active_track_index = i
                     break
+            else:
+                raise ValueError(f"Track with name {identifier} not found")
         elif type(identifier) is int:
             self._active_track_index = identifier
