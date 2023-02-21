@@ -6,6 +6,7 @@ from tornado.iostream import IOStream
 
 from modules.dsp import DSPServer
 from modules.frontend import FrontendHandler
+from modules.srs import SPN
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,11 @@ class SuperEarApplication(tornado.web.Application):
     def on_dsp_pluck(self, string_frequency: float, address: tuple):
         print(
             f"String pluck with frequency {string_frequency} (multiplied by two is {2*string_frequency}) from {address}"
+        )
+        note_played = SPN.from_freq(string_frequency)
+        dist = abs(SPN.from_str("A4") - note_played)
+        print(
+            f"Note was a {SPN.from_freq(string_frequency)} which is {dist} semitones from {SPN.from_str('A4')}."
         )
 
     # Callback function for when a DSP connects
