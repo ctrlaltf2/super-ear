@@ -6,6 +6,7 @@ from tornado.iostream import IOStream
 
 from modules.dsp import DSPServer
 from modules.frontend import FrontendHandler
+from modules.game_session import GameSessionSocketHandler
 from modules.srs import SPN
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class SuperEarApplication(tornado.web.Application):
             r"^.*$",
             [
                 (r"/", FrontendHandler),
+                (r"/game_session", GameSessionSocketHandler),
             ],
         )
 
