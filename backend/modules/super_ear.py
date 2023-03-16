@@ -3,7 +3,7 @@ import tornado.web
 
 from tornado.options import options
 from tornado.iostream import IOStream
-from tornado.web import StaticFileHandler, RedirectHandler
+from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 
 from modules.dsp import DSPServer
 from modules.game_session import GameSessionSocketHandler
@@ -35,6 +35,13 @@ class SuperEarApplication(tornado.web.Application):
 
         self.dsp_connections = {}
         self.game_sessions = {}
+
+        class WhyDoYouSendServerTokens(OutputTransform):
+            def transform_first_chunk(self, status_code, headers, chunk, finishing):
+                headers.pop("Server")
+                return status_code, headers, chunk
+
+        super().__init__([], transforms=[WhyDoYouSendServerTokens])
 
         self.add_handlers(
             r"^.*$",
