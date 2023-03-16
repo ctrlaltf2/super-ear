@@ -35,6 +35,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         # Non-None enables compression with default options.
         return {}
 
+    def set_default_headers(self) -> None:
+        self.set_header("Server", "")
+
     def open(self):
         print("WebSocket opened")
 
