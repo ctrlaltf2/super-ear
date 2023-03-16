@@ -1,8 +1,8 @@
 services:
   backend:
     build:
-      context: backend
-      target: builder
+      context: .
+      target: prod
     ports:
       - "8000:8000"
       - "8081:8081"
@@ -38,5 +38,4 @@ networks:
   server-side: {}
 
 volumes:
-  backend-cache: {}
   db-data: {}
