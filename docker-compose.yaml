@@ -28,14 +28,14 @@ services:
       - POSTGRES_PASSWORD=mysecretpassword
     networks:
       - server-side
-    ports:
-      - 5432:5432
+    ports: [] # - 5432:5432
     volumes:
       - db-data:/var/lib/postgresql/data
 
 networks:
   client-side: {}
-  server-side: {}
+  server-side:
+    internal: true
 
 volumes:
   db-data: {}
