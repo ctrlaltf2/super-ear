@@ -3,7 +3,7 @@ import { Fragment, useRef } from 'react'
 
 export const StatsModal = (props) => {
     const cancelButtonRef = useRef(null)
-    const numCols = props.numCols
+    //const numCols = props.numCols
     const titleList = props.ColTitles
     const statsList = props.statsList
 

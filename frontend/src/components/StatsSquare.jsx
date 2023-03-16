@@ -6,7 +6,7 @@ export const StatsSquare = (props) => {
     function handleClick() {
         setModal(true)
     }
-    const numCols = props.numCols
+    // const numCols = props.numCols
     const titleList = props.ColTitles
     const statsList = props.stats
     return (
