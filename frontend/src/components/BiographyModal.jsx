@@ -38,7 +38,9 @@ export const BiographyModal = (props) => {
                                     {/*bio picture*/}   
                                     <div className="align-center w-full">                         
                                         <img className="w-full aspect-square rounded-full mx-auto shadow-2xl drop-shadow-2xl" 
-                                                src={props.pic} />
+                                                src={props.pic}
+                                                alt={props.name + " profile picture"}
+                                        />
                                     </div>  
                                     {/*bio text*/}
                                     <div className="text-center bg-slate-600 shadow-2xl drop-shadow-2xl rounded-xl p-3">
