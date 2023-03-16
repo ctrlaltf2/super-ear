@@ -3,9 +3,9 @@ import tornado.web
 
 from tornado.options import options
 from tornado.iostream import IOStream
+from tornado.web import StaticFileHandler, RedirectHandler
 
 from modules.dsp import DSPServer
-from modules.frontend import FrontendHandler
 from modules.game_session import GameSessionSocketHandler
 from modules.srs import SPN
 
@@ -35,8 +35,13 @@ class SuperEarApplication(tornado.web.Application):
         self.add_handlers(
             r"^.*$",
             [
-                (r"/", FrontendHandler),
                 (r"/game_session", GameSessionSocketHandler),
+                (r"/play", RedirectHandler, {"url": "/"}),
+                (
+                    r"/(.*)",
+                    StaticFileHandler,
+                    {"path": "/super-ear/srv", "default_filename": "index.html"},
+                ),
             ],
         )
 
