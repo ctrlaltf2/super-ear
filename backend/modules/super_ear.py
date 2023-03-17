@@ -8,6 +8,7 @@ from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 from modules.dsp import DSPServer
 from modules.game_session import GameSessionSocketHandler
 from modules.srs import SPN
+from modules.dsp_session import DSPSession
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class SuperEarApplication(tornado.web.Application):
     tcp_server: DSPServer
 
     # Active DSP connections list. socket.peername tuple -> stream
-    dsp_connections: dict[tuple, IOStream]
+    dsp_connections: dict[tuple, DSPSession]
 
     # Active game sessions, socket.peername tuple -> game session
     game_sessions: dict[tuple, GameSessionSocketHandler]
@@ -29,7 +30,6 @@ class SuperEarApplication(tornado.web.Application):
         self.tcp_server.listen(options.dsp_port)
 
         # Register callbacks for DSP
-        self.tcp_server.register_pluck_cb(self.on_dsp_pluck)
         self.tcp_server.register_connect_cb(self.on_dsp_connect)
         self.tcp_server.register_disconnect_cb(self.on_dsp_disconnect)
 
@@ -37,7 +37,7 @@ class SuperEarApplication(tornado.web.Application):
         self.game_sessions = {}
 
         class WhyDoYouSendServerTokens(OutputTransform):
-            def transform_first_chunk(self, status_code, headers, chunk, finishing):
+            def transform_first_chunk(self, status_code, headers, chunk, _):
                 headers.pop("Server")
                 return status_code, headers, chunk
 
@@ -70,6 +70,11 @@ class SuperEarApplication(tornado.web.Application):
         self.game_sessions[socket] = session
         print(f"Opened GS::{socket}")
 
+    def on_game_session_message(self, socket: tuple, message: dict):
+        assert socket in self.game_sessions
+
+        print(f"Message from GS::{socket}: {message}")
+
     def on_game_session_close(self, socket: tuple):
         assert socket in self.game_sessions
 
@@ -78,31 +83,15 @@ class SuperEarApplication(tornado.web.Application):
 
         print(f"Closed GS::{socket}")
 
-    def on_game_session_message(self, socket: tuple, message: str):
-        assert socket in self.game_sessions
-
-        print(f"Message from GS::{socket}: {message}")
-
-    # Callback for when a DSP sends a pluck message
-    def on_dsp_pluck(self, string_frequency: float, address: tuple):
-        print(
-            f"String pluck with frequency {string_frequency} (multiplied by two is {2*string_frequency}) from {address}"
-        )
-        note_played = SPN.from_freq(string_frequency)
-        dist = abs(SPN.from_str("A4") - note_played)
-        print(
-            f"Note was a {SPN.from_freq(string_frequency)} which is {dist} semitones from {SPN.from_str('A4')}."
-        )
-
     # Callback function for when a DSP connects
-    def on_dsp_connect(self, address: tuple, stream: IOStream):
+    def on_dsp_connect(self, address: tuple, session: DSPSession):
         logger.info(f"New DSP connection from {address}")
 
         assert (
             address not in self.dsp_connections
         )  # Assumption made, shouldn't happen I think
 
-        self.dsp_connections[address] = stream
+        self.dsp_connections[address] = session
 
     # Callback function for when a DSP disconnects
     def on_dsp_disconnect(self, address: tuple):
