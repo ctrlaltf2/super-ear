@@ -6,6 +6,7 @@ from tornado import gen
 from tornado.iostream import IOStream, StreamClosedError
 from tornado.options import define, options
 from tornado.tcpserver import TCPServer
+from modules.dsp_session import DSPSession
 
 # Main class used to listen and communicate with the DSP
 # Will listen on port 8081 by default for information being sent from the DSP module
@@ -18,7 +19,7 @@ class DSPServer(TCPServer):
     on_pluck: list[Callable[[float, tuple], None]]
 
     # Callback functions called when user connects
-    on_connect: list[Callable[[tuple, IOStream], None]]
+    on_connect: list[Callable[[tuple, DSPSession], None]]
 
     # Callback functions called when user disconnects
     on_disconnect: list[Callable[[tuple], None]]
@@ -40,22 +41,30 @@ class DSPServer(TCPServer):
         assert address not in self.connections  # Shouldn't happen but just in case
         self.connections[address] = stream
 
+        # Start a session for this connection
+        session = DSPSession(stream)
+
         # Call all connect callbacks
         for cb in self.on_connect:
-            cb(address, stream)
+            cb(address, session)
 
         while True:
             try:
-                # Implementation-defined algorithm begins here
+                # Protocol messages are delimited by newlines (future; null bytes)
+                # It's up to the DSPSession to handle the rest
                 data = yield stream.read_until(b"\n")
 
                 # Attempt to decode a UTF-8 string from the data
                 try:
-                    print("trying")
                     decoded_data = data.decode("utf-8").strip()
                 except UnicodeError:
                     logger.warning(f"Received invalid UTF-8 data: 0x{data.hex()}")
                     continue  # TODO: send structured error message to DSP?
+
+                # Call the session's recv_message function
+                session.recv_message(decoded_data)
+
+                continue
 
                 # Parse command & payload
                 (command, _, payload) = decoded_data.partition(" ")
@@ -107,7 +116,6 @@ class DSPServer(TCPServer):
                 break
 
         # Remove from connections
-        print(address)
         assert address in self.connections  # Should be there but assumption of course
         del self.connections[address]
 
@@ -115,14 +123,12 @@ class DSPServer(TCPServer):
         for cb in self.on_disconnect:
             cb(address)
 
-    # Add a callback function to be called when a new guitar string pluck message is received
-    def register_pluck_cb(self, cb):
-        self.on_pluck.append(cb)
-
     # Add a callback function to be called when a user connects. Takes full address and IOStream
     def register_connect_cb(self, cb):
+        assert callable(cb)
         self.on_connect.append(cb)
 
     # Add a callback function to be called when a user disconnects. Takes full address of socket
     def register_disconnect_cb(self, cb):
+        assert callable(cb)
         self.on_disconnect.append(cb)
