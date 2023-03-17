@@ -1,7 +1,17 @@
+from __future__ import annotations
+
+import json
+
 from typing import Callable
 
 import tornado.websocket
 import tornado.escape
+
+# python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from modules.dsp_session import DSPSession
 
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
@@ -13,6 +23,12 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
     # socket for this connection. what's in the tuple depends on what the socket is.
     sock: tuple
+
+    # Paired DSP session
+    dsp_session: DSPSession | None
+
+    # Pairing code, assigned by SuperEarApplication
+    _pair_code: list[int]
 
     def __init__(self, *args, **kwargs):
         print("GameSocket::__init__()")
@@ -34,6 +50,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         del kwargs["on_open"]
         del kwargs["on_close"]
         del kwargs["on_message"]
+
+        self.dsp_session = None
 
         # call parent ctor
         super().__init__(*args, **kwargs)
@@ -58,6 +76,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_close(self) -> None:
         print("WebSocket closed")
+        # TODO: Signal unpair to connected DSP
         self.cb_on_close(self.sock)
 
     def on_message(self, message: str) -> None:
@@ -87,3 +106,26 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         self.cb_on_message(self.sock, message)
+
+    def pair(self, dsp_session: DSPSession) -> None:
+        assert self.dsp_session is None
+        self.dsp_session = dsp_session
+        self.send_to_dsp("Hello from game session")
+
+    def assign_pair_code(self, pair_code: list[int]):
+        self._pair_code = pair_code
+
+    def send_to_dsp(self, msg: str):
+        if self.dsp_session is None:
+            return
+
+        self.dsp_session.send_message(msg)
+
+    def unpair(self):
+        self.dsp_session = None
+
+    # Sends a message to this game session's peer
+    def send_message(self, type: str, data: float | int | str | list | dict):
+        print("Sending message to game session")
+        msg = json.dumps({"type": type, "payload": data})
+        self.write_message(msg)

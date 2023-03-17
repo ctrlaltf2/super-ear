@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 
 class DSPServer(TCPServer):
-    # Callback functions to be called when a new guitar string pluck message is received
-    on_pluck: list[Callable[[float, tuple], None]]
-
     # Callback functions called when user connects
     on_connect: list[Callable[[tuple, DSPSession], None]]
+
+    # Callback functions called when a socket is confirmed to be a DSP device
+    on_confirm: list[Callable[[tuple], None]]
 
     # Callback functions called when user disconnects
     on_disconnect: list[Callable[[tuple], None]]
@@ -32,8 +32,8 @@ class DSPServer(TCPServer):
         self.connections = {}
 
         self.on_connect = []
+        self.on_confirm = []
         self.on_disconnect = []
-        self.on_pluck = []
 
     @gen.coroutine
     def handle_stream(self, stream, address):
@@ -48,6 +48,8 @@ class DSPServer(TCPServer):
         for cb in self.on_connect:
             cb(address, session)
 
+        confirmed = False
+
         while True:
             try:
                 # Protocol messages are delimited by newlines (future; null bytes)
@@ -61,49 +63,33 @@ class DSPServer(TCPServer):
                     logger.warning(f"Received invalid UTF-8 data: 0x{data.hex()}")
                     continue  # TODO: send structured error message to DSP?
 
-                # Call the session's recv_message function
-                session.recv_message(decoded_data)
+                # If the data is empty, ignore it
+                if len(decoded_data) == 0:
+                    continue
 
-                continue
+                # Ideally confirmation is cryptographically based, like a credit card (DSP is the credit card),
+                # but because this is a ~12 week project, we'll just use a simple string. Security by obscurity, but good enough.
+                if not confirmed:
+                    # If the data is a identification message, call the confirm callbacks
+                    if decoded_data == "SUPEREAR":
+                        print(
+                            f"Received confirmation from DSP at {address}. Beginning DSP session."
+                        )
+                        confirmed = True
 
-                # Parse command & payload
-                (command, _, payload) = decoded_data.partition(" ")
+                        for cb in self.on_confirm:
+                            cb(address)
 
-                if command == "PLUCK":
-                    try:
-                        frequency = float(payload)
-                    except ValueError:
-                        logger.warning(f"Received invalid frequency: {payload}")
-                        continue  # TODO: send structured error message to DSP?
+                        continue  # don't call recv_message on first time
+                    else:
+                        print(
+                            f"Received invalid confirmation from TCP socket at {address}. Disconnecting."
+                        )
+                        break  # disconnect the stream, it's not a DSP
 
-                    # call the callback functions for plucking
-                    for cb in self.on_pluck:
-                        cb(frequency, address)
-                elif command == "INJECT" and (options.debug == True):
-                    (socket_address, _, payload) = payload.partition(" ")
-                    (ip, _, port) = socket_address.partition(":")
-
-                    lookup_address = (ip, int(port))
-                    logger.debug(f"Injecting data to {lookup_address}: '{payload}'")
-
-                    # Make sure connection is being looked up/tracked correctly & exists
-                    if lookup_address not in self.connections:
-                        yield stream.write(b"ERROR: No connection to that address\n")
-                        continue
-
-                    # Forward the data on that stream as bytes, decoded from utf-8
-                    yield self.connections[lookup_address].write(
-                        payload.encode("utf-8")
-                    )
-                    logger.debug(f"Sent data to {lookup_address}.")
-                else:
-                    logger.warning(f"Received unknown command: {command}")
-                    yield stream.write(b"UNKNOWN " + command.encode("utf-8") + b"\n")
-                    continue  # TODO: send structured error message to DSP?
-
-                # Echo back an acknowledgement
-                yield stream.write(b"ACK " + data)
-
+                if confirmed:  # delegate to the DSPSession the message
+                    # Call the session's recv_message function
+                    session.recv_message(decoded_data)
             except StreamClosedError:
                 logger.warning(f"Lost client at host {address[0]}:{address[1]}")
 
@@ -132,3 +118,7 @@ class DSPServer(TCPServer):
     def register_disconnect_cb(self, cb):
         assert callable(cb)
         self.on_disconnect.append(cb)
+
+    def register_confirm_cb(self, cb):
+        assert callable(cb)
+        self.on_confirm.append(cb)
