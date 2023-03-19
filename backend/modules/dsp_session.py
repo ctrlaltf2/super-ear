@@ -34,7 +34,7 @@ class DSPSession:
             print("tried to send to game session, it was none")
             return
 
-        self.game_session.send_message(tp, data)
+        self.game_session.send_frontend_message(tp, data)
 
     # Sends a message to the DSP
     def send_message(self, msg: str):

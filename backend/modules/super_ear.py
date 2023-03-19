@@ -168,28 +168,6 @@ class SuperEarApplication(tornado.web.Application):
 
         print(f"Opened GS::{socket}")
 
-        return
-
-        # assume the next available game session is the one to be paired
-        if len(self.unpaired_dsp) > 0:
-            dsp_session_addr = self.unpaired_dsp.pop()
-            self._pair(dsp_session_addr, socket)
-
-            if not self._pair(dsp_session_addr, socket):
-                print("Failed to pair, unspecified what to do next.")
-                return
-
-            # Lookup DSP session and pair
-            assert dsp_session_addr in self.dsp_sessions
-            dsp_session = self.dsp_sessions[dsp_session_addr]
-            dsp_session.pair(session)
-
-            # Pair game session
-            session.pair(dsp_session)
-
-        else:
-            self.unpaired_game_sessions.appendleft(socket)
-
     def on_game_session_message(self, socket: tuple, message: dict):
         assert socket in self.game_sessions
 

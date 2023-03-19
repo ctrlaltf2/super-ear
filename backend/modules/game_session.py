@@ -124,8 +124,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     def unpair(self):
         self.dsp_session = None
 
-    # Sends a message to this game session's peer
-    def send_message(self, type: str, data: float | int | str | list | dict):
-        print("Sending message to game session")
+    # Sends a message to the connected frontend client
+    def send_frontend_message(self, type: str, data: float | int | str | list | dict):
+        print("Sending message to frontend")
         msg = json.dumps({"type": type, "payload": data})
         self.write_message(msg)
