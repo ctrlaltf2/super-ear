@@ -67,15 +67,12 @@ class SuperEarApplication(tornado.web.Application):
 
     # attempt pairing of a DSP and a game session. returns true if successful
     def _pair(self, dsp_address: tuple, game_session_address: tuple) -> bool:
+        print("SuperEarApplication::_pair()")
         try:
             self.pairings[dsp_address] = game_session_address
 
-            # Call pairing functions
-            game_session = self.get_paired_game_session(dsp_address)
-            dsp_session = self.get_paired_dsp_session(game_session_address)
-
-            assert game_session is not None
-            assert dsp_session is not None
+            game_session = self.game_sessions[game_session_address]
+            dsp_session = self.dsp_sessions[dsp_address]
 
             game_session.pair(dsp_session)
             dsp_session.pair(game_session)
@@ -83,12 +80,15 @@ class SuperEarApplication(tornado.web.Application):
             logger.warning(
                 f"Unexpected duplicate mapping from {dsp_address}, one to {game_session_address}"
             )
-            assert False  # TODO: proper condition
+            raise
         except ValueDuplicationError:
             logger.warning(
                 f"Unexpected duplicate mapping to {game_session_address}, one from {dsp_address}"
             )
-            assert False  # TODO: proper condition
+            raise
+        except Exception as e:
+            logger.warning(f"Unexpected exception {type(e)}")
+            raise
 
         return True
 
@@ -159,7 +159,9 @@ class SuperEarApplication(tornado.web.Application):
         )
 
     def on_game_session_open(self, socket: tuple, session: GameSessionSocketHandler):
-        assert socket not in self.game_sessions
+        assert (
+            socket not in self.game_sessions
+        ), "game session already exists (duplicate call or duplicate socket?)"
 
         self.game_sessions[socket] = session
 
@@ -169,12 +171,16 @@ class SuperEarApplication(tornado.web.Application):
         print(f"Opened GS::{socket}")
 
     def on_game_session_message(self, socket: tuple, message: dict):
-        assert socket in self.game_sessions
+        assert (
+            socket in self.game_sessions
+        ), "game session does not exist (race condition?)"
 
         print(f"Message from GS::{socket}: {message}")
 
     def on_game_session_close(self, socket: tuple):
-        assert socket in self.game_sessions
+        assert (
+            socket in self.game_sessions
+        ), "game session does not exist, (duplicate call, socket, or race condition?)"
 
         if socket in self.game_sessions:
             del self.game_sessions[socket]
@@ -190,7 +196,9 @@ class SuperEarApplication(tornado.web.Application):
             if dsp_sock in self.dsp_sessions:
                 self.dsp_sessions[dsp_sock].unpair()
 
-            assert dsp_sock not in self.unconfirmed_dsps
+            assert (
+                dsp_sock not in self.unconfirmed_dsps
+            ), "DSP was unpaired but still unconfirmed"
 
             # Set it back into pairing mode (TODO: If sequence-based pair implemented, this will need to be changed)
             self.unpaired_dsp.appendleft(dsp_sock)
@@ -206,7 +214,7 @@ class SuperEarApplication(tornado.web.Application):
 
         assert (
             socket not in self.dsp_sessions
-        )  # Assumption made, shouldn't happen I think
+        ), "duplicate DSP socket detected"  # Assumption made, shouldn't happen I think
 
         self.dsp_sessions[socket] = session
 
@@ -218,7 +226,9 @@ class SuperEarApplication(tornado.web.Application):
     def on_dsp_confirm(self, socket: tuple):
         print("SE::DSP confirmed")
         # Remove from the unconfirmed set
-        assert socket in self.unconfirmed_dsps
+        assert (
+            socket in self.unconfirmed_dsps
+        ), "DSP was double-confirmed or wasn't added to unconfirmed list"
         self.unconfirmed_dsps.remove(socket)
 
         # Add it to the unpaired one
@@ -233,7 +243,7 @@ class SuperEarApplication(tornado.web.Application):
 
         assert (
             socket in self.dsp_sessions
-        )  # Assumption made, again shouldn't happen I think
+        ), "Possible double-remove detected, or dsp_session didn't track socket"  # Assumption made, again shouldn't happen I think
 
         if socket in self.dsp_sessions:
             del self.dsp_sessions[socket]
@@ -268,6 +278,8 @@ class SuperEarApplication(tornado.web.Application):
             dsp_sock = self.unpaired_dsp.pop()
             game_session_sock = self.unpaired_game_sessions.pop()
 
+            print("Pairing", dsp_sock, game_session_sock)
+
             paired = self._pair(dsp_sock, game_session_sock)
-            assert paired
+            assert paired, "Pairing failed"
             print(f"Paired DSP::{dsp_sock} with GS::{game_session_sock}")

@@ -4,7 +4,7 @@ from typing import Callable
 
 from tornado import gen
 from tornado.iostream import IOStream, StreamClosedError
-from tornado.options import define, options
+from tornado.options import define
 from tornado.tcpserver import TCPServer
 from modules.dsp_session import DSPSession
 
@@ -38,7 +38,9 @@ class DSPServer(TCPServer):
     @gen.coroutine
     def handle_stream(self, stream, address):
         # Store connection
-        assert address not in self.connections  # Shouldn't happen but just in case
+        assert (
+            address not in self.connections
+        ), "possible duplicate socket detected"  # Shouldn't happen but just in case
         self.connections[address] = stream
 
         # Start a session for this connection
@@ -111,14 +113,14 @@ class DSPServer(TCPServer):
 
     # Add a callback function to be called when a user connects. Takes full address and IOStream
     def register_connect_cb(self, cb):
-        assert callable(cb)
+        assert callable(cb), "connect callbacks must be callable"
         self.on_connect.append(cb)
 
     # Add a callback function to be called when a user disconnects. Takes full address of socket
     def register_disconnect_cb(self, cb):
-        assert callable(cb)
+        assert callable(cb), "disconnect callbacks must be callable"
         self.on_disconnect.append(cb)
 
     def register_confirm_cb(self, cb):
-        assert callable(cb)
+        assert callable(cb), "confirm callbacks must be callable"
         self.on_confirm.append(cb)

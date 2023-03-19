@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from tornado.iostream import IOStream
 
+from enum import Enum
+
 # python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
 from typing import TYPE_CHECKING
 
