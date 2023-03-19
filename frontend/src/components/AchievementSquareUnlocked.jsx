@@ -21,7 +21,7 @@ export const AchievementSquareUnlocked = (props) => {
             close = {setModal}
            />
 
-        <div className = "cursor-pointer drop-shadow-xl pb-[1%] pt-[1%] rounded-lg bg-slate-800 mx-auto hover:transition-all hover:bg-slate-700 transition ease-in-out delay-150 hover:shadow-lg hover:shadow-yellow-600 w-[85%] mb-4"
+        <div className = "cursor-pointer drop-shadow-xl pb-[1%] pt-[1%] rounded-lg bg-slate-800 mx-auto hover:transition-all hover:bg-slate-700 transition ease-in-out hover:shadow-lg hover:shadow-yellow-600 w-[85%] mb-4"
                         onClick = {() => handleClick()}
         
         >
