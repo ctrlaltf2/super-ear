@@ -1,4 +1,4 @@
 # python == 3.11.x (greater is untested)
 tornado == 6.2
-pymongo == 4.3.3
+beanie == 1.17.0
 bidict == 0.22.1
