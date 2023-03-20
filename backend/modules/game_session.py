@@ -143,20 +143,13 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         self.dsp_session.send_message(msg)
 
     def pair(self, dsp_session: DSPSession) -> None:
-        print("GameSessionSocketHandler::pair()")
         assert self.dsp_session is None, "Already paired"
-        print("GameSessionSocketHandler::pair() - 2")
         self.dsp_session = dsp_session
         self._set_state(self.SessionState.PAIRED)
-        print("GameSessionSocketHandler::pair() - 5")
 
         assert (
             self._state == self.SessionState.PAIRED
         ), "post: set state should set the state"
-        print("GameSessionSocketHandler::pair() - 3")
-
-        self.send_to_dsp("Hello from game session")
-        print("GameSessionSocketHandler::pair() - 4")
 
     def unpair(self):
         self.dsp_session = None

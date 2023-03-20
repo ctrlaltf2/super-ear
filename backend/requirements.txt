@@ -1,4 +1,4 @@
 # python == 3.11.x (greater is untested)
 tornado == 6.2
-SQLAlchemy == 2.0.3
+pymongo == 4.3.3
 bidict == 0.22.1
