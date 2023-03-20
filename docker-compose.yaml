@@ -6,31 +6,22 @@ services:
     ports:
       - "8000:8000"
       - "8081:8081"
-    environment:
-      - ADDRESS=0.0.0.0:8000
-      - PG_DBNAME=postgres
-      - PG_HOST=db
-      - PG_USER=postgres
-      - PG_PASSWORD=mysecretpassword
     networks:
       - client-side
       - server-side
     volumes:
       - ./backend:/code
     depends_on:
-      - db
+      - mongo
     tty: true
 
-  db:
-    image: postgres:12-alpine
+  mongo:
     restart: always
-    environment:
-      - POSTGRES_PASSWORD=mysecretpassword
+    image: mongo:6.0.5-jammy
+    volumes:
+      - db-data:/data/db
     networks:
       - server-side
-    ports: [] # - 5432:5432
-    volumes:
-      - db-data:/var/lib/postgresql/data
 
 networks:
   client-side: {}
