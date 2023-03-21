@@ -6,8 +6,8 @@ import random
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
-from app.core.srs.collection import Collection
-from app.core.srs.review_item import ReviewItem, ReviewState
+from app.models.collection import Collection
+from app.models.review_item import ReviewItem, ReviewState
 
 # Generic interface for spaced-repetition schedulers
 # Will be used to test out different scheduling algorithms

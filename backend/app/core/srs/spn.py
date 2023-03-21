@@ -79,7 +79,7 @@ class SPN:
         return f"{self.tone_name}{octave}{self.modifier}"
 
     def __repr__(self):
-        return f"SPNNote(tone={self.tone_name}, octave={self.octave}, modifier={self.modifier})"
+        return f"{self.tone_name}{self.octave}{repr(self.modifier)}"
 
     def __int__(self):
         tone_as_int = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}

@@ -16,7 +16,7 @@ from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 from app.core.dsp_server import DSPServer
 from app.core.game_session import GameSessionSocketHandler
 from app.core.dsp_session import DSPSession
-from app.core.srs import SPN
+from app.core.srs.spn import SPN
 
 logger = logging.getLogger(__name__)
 
