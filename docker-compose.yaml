@@ -6,14 +6,14 @@ services:
     ports:
       - "8000:8000"
       - "8081:8081"
-    networks:
-      - client-side
-      - server-side
     volumes:
       - ./backend:/code
     depends_on:
       - mongo
+    environment:
+      - MONGODB_HOST=mongo:27017
     tty: true
+    command: sh -c '/bin/wait-for-it.sh mongo:27017 -- python3 /code/main.py'
 
   mongo:
     restart: always
@@ -21,13 +21,6 @@ services:
     env_file: backend/.env
     volumes:
       - db-data:/data/db
-    networks:
-      - server-side
-
-networks:
-  client-side: {}
-  server-side:
-    internal: true
 
 volumes:
   db-data: {}
