@@ -18,6 +18,7 @@ services:
   mongo:
     restart: always
     image: mongo:6.0.5-jammy
+    env_file: backend/.env
     volumes:
       - db-data:/data/db
     networks:
