@@ -2,7 +2,10 @@ import logging
 
 from typing import Iterator
 
-from app.core.srs.review_item import ReviewItem
+from pydantic import BaseModel
+from pydantic.fields import Field
+
+from app.models.review_item import ReviewItem
 
 logger = logging.getLogger(__name__)
 
@@ -10,16 +13,12 @@ logger = logging.getLogger(__name__)
 # A track is a collection of review items that are related to each other
 # For example, a track can be the set of notes on the high E string of a guitar
 # Track acts like an ordered list of review items
-class Track:
+class Track(BaseModel):
     # Name for the track
-    name: str
+    name: str = Field(..., description="Name of the track")
 
     # The review items in this track
-    review_items: list[ReviewItem]
-
-    def __init__(self, review_items: list[ReviewItem], name: str):
-        self.name = name
-        self.review_items = review_items
+    review_items: list[ReviewItem] = Field(..., description="Review items in the track")
 
     # Python, collections API []
     # O(1)
@@ -49,7 +48,7 @@ class Track:
 
     @staticmethod
     def from_list(items: list[ReviewItem], name: str) -> "Track":
-        return Track(items, name)
+        return Track(review_items=items, name=name)
 
     def __repr__(self):
         return (

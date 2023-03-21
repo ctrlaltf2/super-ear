@@ -1,49 +1,47 @@
 import datetime
 
-from app.core.srs.track import Track
+from pydantic import BaseModel
+from pydantic.fields import Field
+
+from app.models.track import Track
 
 
 # Class to represent a set of learning tracks
-class Collection:
+class Collection(BaseModel):
     # List of the tracks
-    tracks: list[Track]
+    tracks: list[Track] = Field(
+        ..., description="list of tracks that make up this collection"
+    )
 
     # Index of the active track
-    active_track_index: int = 0
+    active_track_index: int = Field(0, ge=0, description="index of the active track")
 
     # Epoch for the collection
-    epoch: datetime.datetime
+    epoch: datetime.datetime = Field(
+        default_factory=datetime.datetime.now, description="epoch for the collection"
+    )
 
     # Day of most recent review. Days since epoch.
-    last_review_day: int = 0
-
-    # Number of new items left to study on current day (epoch + last_review_day)
-    n_new_items_today: int
-
-    # Number of reviewing items left to study on current day (epoch + last_review_day)
-    n_review_items_today: int
+    last_review_day: int = Field(
+        0, description="day of most recent review. days since epoch."
+    )
 
     # -- collection settings
 
     # Maximum number of new items to study per day
-    max_new_per_day: int = 3
+    max_new_per_day: int = Field(
+        3, description="maximum number of new items to study per day", ge=0
+    )
 
     # Maximum number of items to study per day. # of cards, not # of reviews.
-    max_reviews_per_day: int = 75
+    max_reviews_per_day: int = Field(
+        75, description="maximum number of items to study per day", ge=0
+    )
 
     # If should mix review and new items together
-    do_mix_new_review: bool = False
-
-    def __init__(self, tracks: list[Track], **kwargs):
-        self.tracks = tracks
-
-        # Pull in configuration
-        self.active_track_index = kwargs.get("active_track_index", 0)
-        self.epoch = kwargs.get("epoch", datetime.datetime.now())
-        self.max_new_per_day = kwargs.get("max_new_per_day", 3)
-        self.max_reviews_per_day = kwargs.get("max_reviews_per_day", 75)
-        self.do_mix_new_review = kwargs.get("do_mix_new_review", False)
-        self.last_review_day = kwargs.get("last_review_day", 0)
+    do_mix_new_review: bool = Field(
+        False, description="if should mix review and new items together"
+    )
 
     def add(self, item: Track):
         self.tracks.append(item)
