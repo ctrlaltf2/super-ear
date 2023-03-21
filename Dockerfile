@@ -28,4 +28,4 @@ COPY --from=node /code/build /super-ear/srv
 FROM py AS prod
 
 ENTRYPOINT ["python3"]
-CMD ["app.py"]
+CMD ["main.py"]

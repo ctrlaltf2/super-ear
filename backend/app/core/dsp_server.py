@@ -6,7 +6,8 @@ from tornado import gen
 from tornado.iostream import IOStream, StreamClosedError
 from tornado.options import define
 from tornado.tcpserver import TCPServer
-from modules.dsp_session import DSPSession
+
+from app.core.dsp_session import DSPSession
 
 # Main class used to listen and communicate with the DSP
 # Will listen on port 8081 by default for information being sent from the DSP module

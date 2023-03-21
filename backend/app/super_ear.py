@@ -13,10 +13,10 @@ from collections import deque
 from tornado.options import options
 from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 
-from modules.dsp_server import DSPServer
-from modules.game_session import GameSessionSocketHandler
-from modules.dsp_session import DSPSession
-from modules.srs import SPN
+from app.core.dsp_server import DSPServer
+from app.core.game_session import GameSessionSocketHandler
+from app.core.dsp_session import DSPSession
+from app.core.srs import SPN
 
 logger = logging.getLogger(__name__)
 

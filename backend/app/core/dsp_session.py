@@ -2,13 +2,11 @@ from __future__ import annotations
 
 from tornado.iostream import IOStream
 
-from enum import Enum
-
 # python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from modules.game_session import GameSessionSocketHandler
+    from app.core.game_session import GameSessionSocketHandler
 
 
 # lifecycle managed automatically for each TCP Socket session, i.e. object created when DSP connects, destroyed when DSP disconnects

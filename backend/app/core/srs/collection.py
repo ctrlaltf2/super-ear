@@ -1,8 +1,6 @@
 import datetime
 
-from typing import Any, Optional
-
-from modules.srs.track import Track
+from app.core.srs.track import Track
 
 
 # Class to represent a set of learning tracks

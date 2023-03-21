@@ -1,8 +1,8 @@
 import logging
 
-from typing import Optional, Iterator
+from typing import Iterator
 
-from modules.srs.review_item import ReviewItem
+from app.core.srs.review_item import ReviewItem
 
 logger = logging.getLogger(__name__)
 

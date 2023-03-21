@@ -1,7 +1,7 @@
-import datetime
-
 from enum import Enum, auto
 from typing import Any, Optional, Self
+
+from pydantic import BaseModel
 
 
 # Enum for the three states of a review item; unseen, learning, and reviewing
