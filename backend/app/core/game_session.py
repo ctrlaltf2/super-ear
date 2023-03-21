@@ -12,7 +12,7 @@ import tornado.escape
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from modules.dsp_session import DSPSession
+    from app.core.dsp_session import DSPSession
 
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
@@ -99,7 +99,6 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         print("WebSocket closed")
         # TODO: Signal unpair to connected DSP
         self.cb_on_close(self.sock)
-        self.unpair()
 
     def on_message(self, message: str) -> None:
         assert self.ws_connection is not None

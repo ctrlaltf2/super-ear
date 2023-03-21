@@ -1,7 +1,7 @@
-from modules.srs.collection import Collection
-from modules.srs.track import Track
-from modules.srs.review_item import ReviewItem, ReviewState
-from modules.srs.spn import SPN, NoteModifier
+from app.core.srs.collection import Collection
+from app.core.srs.track import Track
+from app.core.srs.review_item import ReviewItem
+from app.core.srs.spn import SPN
 
 
 # -- Default collections
