@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import datetime
 import json
+import logging  # call that deforestation
+import heapq
 
 from enum import Enum
-from typing import Callable
+from typing import Callable, Any
 
 import tornado.websocket
 import tornado.escape
@@ -14,11 +17,27 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.core.dsp_session import DSPSession
 
+from app.models.user import User
+from app.models.track import Track
+from app.core.srs.scheduler import OrderedReviewItem, V1
+from app.core.srs.spn import SPN
+
+logger = logging.getLogger(__name__)
+
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     class SessionState(Enum):
-        WAITING_FOR_DSP = "waiting_for_dsp"
-        PAIRED = "paired"
+        WAITING_FOR_DSP = "waiting_for_dsp"  # waiting for a DSP to pair
+        SELECTING_STRING = (
+            "string_select"  # waiting for user to select a string/learning track
+        )
+        SCHEDULING = "scheduling"
+        WAITING_FOR_PLAY = (
+            "waiting_for_play"  # waiting for user to play a note on their instrument
+        )
+        SCORING = "scoring"  # game logic is scoring the response
+        REMEDIATING = "remediating"  # user got it wrong, waiting for them to play again
+        REVIEW_DONE = "review_done"  # user has finished reviewing for the moment
 
         def __str__(self):
             return self.value
@@ -41,9 +60,25 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     # State of the session
     _state: SessionState
 
-    def __init__(self, *args, **kwargs):
-        print("GameSocket::__init__()")
+    # username, tbd how this is auth'd
+    _username: str = "demo"
 
+    # user object, tbd how this is auth'd
+    _user: User | None
+
+    # current review queue, if there is one
+    _reviewing_queue: list[OrderedReviewItem] | None
+
+    # item being reviewed, if there is one
+    _next_item: OrderedReviewItem | None
+
+    # scheduler used by the game
+    _scheduler = V1
+
+    # start time of the review session, if it exists
+    _start_time: datetime.datetime | None
+
+    def __init__(self, *args, **kwargs):
         assert "on_open" in kwargs
         assert callable(kwargs["on_open"])
 
@@ -64,13 +99,152 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         self.dsp_session = None
         self._pair_code = None
+        self._user = None
+        self._reviewing_queue = None
+        self._next_item = None
+        self._start_time = None
 
         # call parent ctor
         super().__init__(*args, **kwargs)
 
+    #
+    ## -- game logic --
+    #
+
+    # main multiplexer for game logic
+    async def _process_message(self, typ: str, payload: Any):
+        match typ:
+            case "string_select":
+                self._string_select(payload)
+                self._set_state(self.SessionState.SCHEDULING)
+                self._init_scheduling()
+                return
+            case "exit_review":
+                return  # TODO
+            case "play":
+                self._handle_play(payload)
+                return
+
+        # if here, we didn't match any of the above cases
+        self.send_frontend_message("error", f"Unknown message type: {typ}")
+
+    def _handle_play(self, payload: float):
+        if self._state != self.SessionState.WAITING_FOR_PLAY:
+            self._send_to_dsp("warning was not expecting a note play message. ignoring")
+            return
+
+        assert (
+            self._user is not None
+        ), "pre: user should be authenticated. bad state mgmt or missed assumptions in getting to here"
+        assert self._next_item is not None, "pre: _expected_note is None"
+        assert self._start_time is not None, "pre: _start_time is None"
+        assert (
+            self._reviewing_queue is not None
+        ), "pre: _reviewing_queue is None, it should be initialized here"
+
+        actual_note: SPN = SPN.from_freq(payload)
+        expected_note: SPN = SPN.from_str(self._next_item.item.content)
+
+        logger.info(
+            f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}"
+        )
+
+        note_distance: int = actual_note - expected_note
+
+        do_readd: bool = self._scheduler.review(self._next_item.item, note_distance, 0)
+
+        if do_readd:
+            heapq.heappush(self._reviewing_queue, self._next_item)
+
+        self.send_frontend_message("note played", repr(actual_note))
+        self._try_send_next_review()
+
+    def _init_scheduling(self):
+        assert self._user is not None, "pre: _init_scheduling called before _user set"
+        assert (
+            self._state != self.SessionState.SCHEDULING
+        ), "pre: _state should be SCHEDULING"
+
+        self._reviewing_queue = self._scheduler.generate_reviewing_queue(
+            self._user.collection
+        )
+
+        self._start_time = datetime.datetime.now(datetime.timezone.utc)
+
+        self._try_send_next_review()
+
+    # given a review queue, try to send the next review item
+    def _try_send_next_review(self):
+        assert self._reviewing_queue is not None, "pre: _reviewing_queue is None"
+
+        if len(self._reviewing_queue) == 0:
+            self._set_state(self.SessionState.REVIEW_DONE)
+            return
+
+        self._next_item = heapq.heappop(self._reviewing_queue)
+
+        # send to DSP the frequeny
+        expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
+
+        self._send_to_dsp(f"play {expected_freq}")
+        self._set_state(self.SessionState.WAITING_FOR_PLAY)
+
+    # Called when the user selects a string to study
+    def _string_select(self, identifier: Any):
+        if self._state != self.SessionState.SELECTING_STRING:
+            self.send_frontend_message(
+                "error",
+                "Wasn't expecting a string select command. Ignoring.",
+            )
+            return
+
+        if type(identifier) == int or type(identifier) == str:
+            try:
+                self._set_active_track(identifier)
+            except ValueError:
+                self.send_frontend_message(
+                    "error",
+                    "Invalid track identifier. Use string # as an int or String name (e.g. 'String 1')",
+                )
+
+            # send confirmation message
+            self.send_frontend_message("string_select", identifier)
+        else:
+            self.send_frontend_message(
+                "error", "Invalid track identifier type. Use a string or integer"
+            )
+
     def _set_state(self, state: SessionState):
         self._state = state
         self.send_frontend_message("state", str(state))
+
+    def _send_to_dsp(self, msg: str):
+        print(f"Sending to DSP: {msg}")
+        if self.dsp_session is None:
+            return
+
+        assert (
+            self._state != self.SessionState.WAITING_FOR_DSP
+        ), "shouldn't be sending to dsp if we're waiting for one to pair"
+
+        self.dsp_session.send_message(msg)
+
+    #
+    ## -- database-related things --
+    #
+    def _get_active_track(self) -> Track:
+        assert self._user is not None, "_get_active_track called before _user set"
+        col = self._user.collection
+        return col.get_active_track()
+
+    def _set_active_track(self, identifier: str | int) -> None:
+        assert self._user is not None, "_set_active_track called before _user set"
+        col = self._user.collection
+        col.set_active_track(identifier)
+
+    #
+    ## -- tornado-related things --
+    #
 
     def get_compression_options(self):
         # Non-None enables compression with default options.
@@ -79,9 +253,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     def set_default_headers(self) -> None:
         self.set_header("Server", "")
 
-    def open(self) -> None:
-        print("WebSocket opened")
-
+    async def open(self) -> None:
         assert self.ws_connection is not None
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
@@ -93,14 +265,19 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self._state == self.SessionState.WAITING_FOR_DSP
         ), "post: set state should set the state"
 
+        # TODO: Auth
+        search_result = await User.find_one(User.username == self._username)
+        assert (
+            search_result is not None
+        ), "demo user not found, is the database bootstrapped?"
+        self._user = search_result
+
         self.cb_on_open(self.sock, self)
 
     def on_close(self) -> None:
-        print("WebSocket closed")
-        # TODO: Signal unpair to connected DSP
         self.cb_on_close(self.sock)
 
-    def on_message(self, message: str) -> None:
+    async def on_message(self, message: str) -> None:
         assert self.ws_connection is not None
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
@@ -110,44 +287,47 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         # decode JSON message
         try:
-            message = tornado.escape.json_decode(message)
+            data = tornado.escape.json_decode(message)
         except ValueError:
+            self.send_frontend_message("error", "Invalid JSON")
             return
 
-        print(f"Got message: {message}")
+        print(f"Got message: {data}")
 
         # validate message
-        if not isinstance(message, dict):
+        if not isinstance(data, dict):
             return
 
-        if "type" not in message:
+        if "type" not in data:
+            self.send_frontend_message("error", "JSON message missing 'type' attribute")
             return
 
-        if "payload" not in message:
+        if "payload" not in data:
+            self.send_frontend_message(
+                "error", "JSON message missing 'payload' attribute"
+            )
             return
 
-        self.cb_on_message(self.sock, message)
+        assert type(data["type"]) == str, "message type should be string"
+
+        self.cb_on_message(self.sock, data)
+        await self._process_message(data["type"], data["payload"])
+
+    #
+    ## -- things called by external things --
+    #
 
     def assign_pair_code(self, pair_code: list[int]):
         assert self._pair_code is None
         self._pair_code = pair_code
 
-    def send_to_dsp(self, msg: str):
-        print(f"Sending to DSP: {msg}")
-        if self.dsp_session is None:
-            return
-
-        assert self._state == self.SessionState.PAIRED
-
-        self.dsp_session.send_message(msg)
-
     def pair(self, dsp_session: DSPSession) -> None:
         assert self.dsp_session is None, "Already paired"
         self.dsp_session = dsp_session
-        self._set_state(self.SessionState.PAIRED)
+        self._set_state(self.SessionState.SELECTING_STRING)
 
         assert (
-            self._state == self.SessionState.PAIRED
+            self._state == self.SessionState.SELECTING_STRING
         ), "post: set state should set the state"
 
     def unpair(self):

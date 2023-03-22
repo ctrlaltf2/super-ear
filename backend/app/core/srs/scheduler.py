@@ -25,7 +25,7 @@ class Scheduler(ABC):
     # Reviews an item, updating its scheduler parameters
     @staticmethod
     @abstractmethod
-    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> None:
+    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> bool:
         pass
 
     # Gets the next due date for an item. Ideally, generate_reviewing_queue uses this.
@@ -138,7 +138,7 @@ class V1(Scheduler):
     # Reviews an item, returning a reviewed copy
     # not pure / side effects- modifies ease factor and last review time, last interval
     @staticmethod
-    def review(item: ReviewItem, note_distance: int, ms_elapsed: int):
+    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> bool:
         # print(f"Reviewing item {item}")
         # Update ease factor
         # ref: SM-2 algorithm, http://super-memory.com/english/ol/sm2.htm
@@ -151,6 +151,7 @@ class V1(Scheduler):
             case ReviewState.Unseen:
                 print("Item is new")
                 item.state = ReviewState.Learning
+                return True
             case ReviewState.Learning:
                 print("Item is learning")
                 was_correct = note_distance <= 0.001
@@ -178,6 +179,8 @@ class V1(Scheduler):
                 else:  # reset learning step
                     print("Item reset to first learning step")
                     item.learning_index = 0
+
+                return (err - 5) < 4
 
             case ReviewState.Reviewing:
                 print("Item is reviewing")
@@ -207,6 +210,8 @@ class V1(Scheduler):
                     1.3,
                     item.ease_factor + (0.1 - err * (0.08 + err * 0.02)),
                 )
+
+                return q < 4
 
     # pure
     @staticmethod
@@ -257,7 +262,8 @@ class Driver:
         # Simulates a user session
         # Realistically, this would be tracked asynchronously
 
-        from modules.srs import DefaultCollections
+        from app.models import DefaultCollections
+        from app.core.srs.spn import SPN
 
         # session.state = initializing
 
@@ -282,7 +288,7 @@ class Driver:
             # TODO: Implement, this is on DSP server side
 
             # Assume user's response is present, they get one off
-            response = next_item.content + 1
+            response = SPN.from_str(next_item.content) + 1
 
             # session.state -> scoring
             note_distance = abs(response - next_item.content)
