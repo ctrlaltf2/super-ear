@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+
 from tornado.iostream import IOStream
 
 # python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
@@ -7,6 +10,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.core.game_session import GameSessionSocketHandler
+
+
+logger = logging.getLogger(__name__)
 
 
 # lifecycle managed automatically for each TCP Socket session, i.e. object created when DSP connects, destroyed when DSP disconnects
@@ -29,7 +35,6 @@ class DSPSession:
         return
 
     def _send_to_game_session(self, tp: str, data):
-        print(f"Sending to game session: {tp} {data}")
         if self.game_session is None:
             print("tried to send to game session, it was none")
             return
@@ -49,10 +54,41 @@ class DSPSession:
 
     # Called when a message is received from the DSP
     def recv_message(self, msg: str):
-        print(f"DSPSession Received message: {msg}")
+        logger.debug(f"DSPSession Received message: {msg}")
+
+        typ, _, payload = msg.strip().partition(" ")
+
+        valid_typ = ["play"]
+
+        if typ not in valid_typ:
+            self.send_message(f"error invalid message type {typ}")
+            return
+
+        match typ:
+            case "play":
+                self._handle_play(payload)
+                return
+
+        assert False, f"forgot to handle case {typ}"
+
+    def _handle_play(self, payload: str):
+        logger.debug(f"DSPSession::_handle_play({payload})")
+
+        if self.game_session is None:
+            self.send_message("error no game session")
+            return
+
+        try:
+            payload_as_float = float(payload)
+        except ValueError:
+            self.send_message("error invalid payload (should be float)")
+            return
+
+        asyncio.get_event_loop().run_until_complete(
+            self.game_session._process_message("play", payload_as_float)
+        )
 
     def pair(self, game_session: GameSessionSocketHandler):
-        print("DSPSession::pair()")
         assert self.game_session is None
         self.game_session = game_session
         self._send_to_game_session("info", "Hello from DSP session")

@@ -8,7 +8,7 @@ import tornado.ioloop
 from tornado.options import options, define
 
 from app.super_ear import SuperEarApplication
-from app.db.init_db import init
+from app.db.init_db import init, bootstrap_db
 
 
 define("debug", default=False, help="Debug mode for the application")
@@ -20,6 +20,7 @@ if __name__ == "__main__":
 
     # setup DB
     asyncio.get_event_loop().run_until_complete(init())
+    asyncio.get_event_loop().run_until_complete(bootstrap_db())
 
     # Setup main app
     app = SuperEarApplication()
