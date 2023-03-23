@@ -36,8 +36,7 @@ class DSPServer(TCPServer):
         self.on_confirm = []
         self.on_disconnect = []
 
-    @gen.coroutine
-    def handle_stream(self, stream, address):
+    async def handle_stream(self, stream, address):
         # Store connection
         assert (
             address not in self.connections
@@ -57,7 +56,7 @@ class DSPServer(TCPServer):
             try:
                 # Protocol messages are delimited by newlines (future; null bytes)
                 # It's up to the DSPSession to handle the rest
-                data = yield stream.read_until(b"\n")
+                data = await stream.read_until(b"\n")
 
                 # Attempt to decode a UTF-8 string from the data
                 try:
