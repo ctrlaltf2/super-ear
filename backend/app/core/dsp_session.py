@@ -52,7 +52,7 @@ class DSPSession:
         self.stream.write(msg_b)
 
     # Called when a message is received from the DSP
-    def recv_message(self, msg: str):
+    async def recv_message(self, msg: str):
         logger.debug(f"DSPSession Received message: {msg}")
 
         typ, _, payload = msg.strip().partition(" ")
@@ -65,12 +65,13 @@ class DSPSession:
 
         match typ:
             case "play":
-                self._handle_play(payload)
+                await self._handle_play(payload)
                 return
 
         assert False, f"forgot to handle case {typ}"
 
-    def _handle_play(self, payload: str):
+    async def _handle_play(self, payload: str):
+        print("DSPSession::_handle_play")
         logger.debug(f"DSPSession::_handle_play({payload})")
 
         if self.game_session is None:
@@ -83,7 +84,9 @@ class DSPSession:
             self.send_message("error invalid payload (should be float)")
             return
 
-        self.game_session._process_message("play", payload_as_float)
+        lolwhat = self.game_session._process_message("play", payload_as_float)
+        print("type lolwhat = ", type(lolwhat))
+        await lolwhat
 
     def pair(self, game_session: GameSessionSocketHandler):
         assert self.game_session is None
