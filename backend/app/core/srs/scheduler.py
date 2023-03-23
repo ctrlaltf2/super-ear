@@ -145,8 +145,6 @@ class V1(Scheduler):
         err = float(note_distance)
         err = max(0, min(5, err))  # clamp note distance to 0-5
 
-        do_update_ef = True
-
         match item.state:
             case ReviewState.Unseen:
                 print("Item is new")
