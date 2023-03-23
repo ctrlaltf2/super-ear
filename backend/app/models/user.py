@@ -18,3 +18,6 @@ class User(Document):
         default_factory=lambda: DefaultCollections.get("GuitarStandard"),
         description="The collection of the user. Future: Will support multiple.",
     )
+
+    class Settings:
+        use_state_manager = True  # ez keep objects in sync

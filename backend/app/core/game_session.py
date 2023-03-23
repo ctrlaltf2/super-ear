@@ -114,23 +114,23 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     #
 
     # main multiplexer for game logic
-    def _process_message(self, typ: str, payload: Any):
+    async def _process_message(self, typ: str, payload: Any):
         match typ:
             case "string_select":
                 self._string_select(payload)
-                self._set_state(self.SessionState.SCHEDULING)
-                self._init_scheduling()
+                await self._set_state(self.SessionState.SCHEDULING)
+                await self._init_scheduling()
                 return
             case "exit_review":
                 return  # TODO
             case "play":
-                self._handle_play(payload)
+                await self._handle_play(payload)
                 return
 
         # if here, we didn't match any of the above cases
         self.send_frontend_message("error", f"Unknown message type: {typ}")
 
-    def _handle_play(self, payload: float):
+    async def _handle_play(self, payload: float):
         if self._state != self.SessionState.WAITING_FOR_PLAY:
             self._send_to_dsp("warning was not expecting a note play message. ignoring")
             return
@@ -160,9 +160,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             random.shuffle(self._reviewing_queue)
 
         self.send_frontend_message("note played", repr(actual_note))
-        self._try_send_next_review()
+        await self._try_send_next_review()
 
-    def _init_scheduling(self):
+    async def _init_scheduling(self):
         assert self._user is not None, "pre: _init_scheduling called before _user set"
         assert (
             self._state == self.SessionState.SCHEDULING
@@ -174,14 +174,14 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         self._start_time = datetime.datetime.now(datetime.timezone.utc)
 
-        self._try_send_next_review()
+        await self._try_send_next_review()
 
     # given a review queue, try to send the next review item
-    def _try_send_next_review(self):
+    async def _try_send_next_review(self):
         assert self._reviewing_queue is not None, "pre: _reviewing_queue is None"
 
         if len(self._reviewing_queue) == 0:
-            self._set_state(self.SessionState.REVIEW_DONE)
+            await self._set_state(self.SessionState.REVIEW_DONE)
             return
 
         self._next_item = self._reviewing_queue[0]
@@ -190,7 +190,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
 
         self._send_to_dsp(f"play {expected_freq}")
-        self._set_state(self.SessionState.WAITING_FOR_PLAY)
+        await self._set_state(self.SessionState.WAITING_FOR_PLAY)
 
     # Called when the user selects a string to study
     def _string_select(self, identifier: Any):
@@ -218,7 +218,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             )
 
     # mirrors a state machine
-    def _set_state(self, next_state: SessionState):
+    async def _set_state(self, next_state: SessionState):
         prev_state = self._state
         self._state = next_state
 
@@ -233,12 +233,11 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
                 match next_state:
                     case self.SessionState.WAITING_FOR_DSP:  # --> dsp d/c'd mid-play
                         if self._reviewing_queue is not None:
-                            # Push collection to database
-                            assert self._user is not None, "pre: _user is None"
-                            self._user.set(User.collection, self._user.collection)
+                            await self._sync_collection()
 
         self.send_frontend_message("state", str(next_state))
 
+    # async candidate
     def _send_to_dsp(self, msg: str):
         print(f"Sending to DSP: {msg}")
         if self.dsp_session is None:
@@ -251,7 +250,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         self.dsp_session.send_message(msg)
 
     #
-    ## -- database-related things --
+    ## -- collection-related things --
     #
     def _get_active_track(self) -> Track:
         assert self._user is not None, "_get_active_track called before _user set"
@@ -262,6 +261,15 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self._user is not None, "_set_active_track called before _user set"
         col = self._user.collection
         col.set_active_track(identifier)
+
+    #
+    ## -- database-related things --
+    #
+    # synchronizes the collection in self._user with the database
+    # ~technically~ this should be done per review item and NOT the full collection but oh well
+    async def _sync_collection(self):
+        assert self._user is not None, "pre: _user is None in sync collection"
+        await self._user.save_changes()
 
     #
     ## -- tornado-related things --
@@ -281,7 +289,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         self.sock = self.ws_connection.stream.socket.getpeername()
 
-        self._set_state(self.SessionState.WAITING_FOR_DSP)
+        await self._set_state(self.SessionState.WAITING_FOR_DSP)
+
         assert (
             self._state == self.SessionState.WAITING_FOR_DSP
         ), "post: set state should set the state"
@@ -295,7 +304,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         self.cb_on_open(self.sock, self)
 
-    def on_close(self) -> None:
+    async def on_close(self) -> None:
         self.cb_on_close(self.sock)
 
     async def on_message(self, message: str) -> None:
@@ -332,7 +341,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert type(data["type"]) == str, "message type should be string"
 
         self.cb_on_message(self.sock, data)
-        self._process_message(data["type"], data["payload"])
+        await self._process_message(data["type"], data["payload"])
 
     #
     ## -- things called by external things --
@@ -342,18 +351,18 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self._pair_code is None
         self._pair_code = pair_code
 
-    def pair(self, dsp_session: DSPSession) -> None:
+    async def pair(self, dsp_session: DSPSession) -> None:
         assert self.dsp_session is None, "Already paired"
         self.dsp_session = dsp_session
-        self._set_state(self.SessionState.SELECTING_STRING)
+        await self._set_state(self.SessionState.SELECTING_STRING)
 
         assert (
             self._state == self.SessionState.SELECTING_STRING
         ), "post: set state should set the state"
 
-    def unpair(self):
+    async def unpair(self):
         self.dsp_session = None
-        self._set_state(self.SessionState.WAITING_FOR_DSP)
+        await self._set_state(self.SessionState.WAITING_FOR_DSP)
 
         assert (
             self._state == self.SessionState.WAITING_FOR_DSP
