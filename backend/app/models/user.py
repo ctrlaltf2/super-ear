@@ -20,4 +20,4 @@ class User(Document):
     )
 
     class Settings:
-        use_state_manager = True  # ez keep objects in sync
+        use_state_management = True  # ez keep objects in sync

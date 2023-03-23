@@ -158,6 +158,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         note_distance: int = actual_note - expected_note
 
         do_readd: bool = self._scheduler.review(self._next_item.item, note_distance, 0)
+        await self._sync_collection()  # sync
 
         if do_readd:
             self._reviewing_queue.append(self._next_item)
