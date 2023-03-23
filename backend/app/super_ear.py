@@ -66,7 +66,7 @@ class SuperEarApplication(tornado.web.Application):
         return SPN.from_str(str_to_note[openstring_id])
 
     # attempt pairing of a DSP and a game session. returns true if successful
-    def _pair(self, dsp_address: tuple, game_session_address: tuple) -> bool:
+    async def _pair(self, dsp_address: tuple, game_session_address: tuple) -> bool:
         print("SuperEarApplication::_pair()")
         try:
             self.pairings[dsp_address] = game_session_address
@@ -74,7 +74,7 @@ class SuperEarApplication(tornado.web.Application):
             game_session = self.game_sessions[game_session_address]
             dsp_session = self.dsp_sessions[dsp_address]
 
-            game_session.pair(dsp_session)
+            await game_session.pair(dsp_session)
             dsp_session.pair(game_session)
         except KeyDuplicationError:
             logger.warning(
@@ -158,7 +158,9 @@ class SuperEarApplication(tornado.web.Application):
             ],
         )
 
-    def on_game_session_open(self, socket: tuple, session: GameSessionSocketHandler):
+    async def on_game_session_open(
+        self, socket: tuple, session: GameSessionSocketHandler
+    ):
         assert (
             socket not in self.game_sessions
         ), "game session already exists (duplicate call or duplicate socket?)"
@@ -166,7 +168,7 @@ class SuperEarApplication(tornado.web.Application):
         self.game_sessions[socket] = session
 
         self.unpaired_game_sessions.appendleft(socket)
-        self.attempt_pairings()
+        await self.attempt_pairings()
 
         print(f"Opened GS::{socket}")
 
@@ -177,7 +179,7 @@ class SuperEarApplication(tornado.web.Application):
 
         print(f"Message from GS::{socket}: {message}")
 
-    def on_game_session_close(self, socket: tuple):
+    async def on_game_session_close(self, socket: tuple):
         assert (
             socket in self.game_sessions
         ), "game session does not exist, (duplicate call, socket, or race condition?)"
@@ -205,7 +207,7 @@ class SuperEarApplication(tornado.web.Application):
 
             del self.pairings.inverse[socket]
 
-        self.attempt_pairings()
+        await self.attempt_pairings()
         print(f"Closed GS::{socket}")
 
     # Callback function for when a DSP connects
@@ -223,7 +225,7 @@ class SuperEarApplication(tornado.web.Application):
         print(f"Opened TCP::{socket}")
 
     # called when the DSPServer confirms (to the best of its ability) that a TCP socket is a DSP
-    def on_dsp_confirm(self, socket: tuple):
+    async def on_dsp_confirm(self, socket: tuple):
         print("SE::DSP confirmed")
         # Remove from the unconfirmed set
         assert (
@@ -235,10 +237,10 @@ class SuperEarApplication(tornado.web.Application):
         self.unpaired_dsp.appendleft(socket)
 
         # and try pairings
-        self.attempt_pairings()
+        await self.attempt_pairings()
 
     # Callback function for when a DSP disconnects
-    def on_dsp_disconnect(self, socket: tuple):
+    async def on_dsp_disconnect(self, socket: tuple):
         logger.info(f"Disconnected DSP from {socket}")
 
         assert (
@@ -260,17 +262,17 @@ class SuperEarApplication(tornado.web.Application):
 
             # alert the paired game session that it's been unpaired
             if game_session_sock in self.game_sessions:
-                self.game_sessions[game_session_sock].unpair()
+                await self.game_sessions[game_session_sock].unpair()
 
             # Set it back into pairing mode (TODO: If sequence-based pair implemented, this will need to be changed)
             self.unpaired_game_sessions.appendleft(game_session_sock)
 
             del self.pairings[socket]
 
-        self.attempt_pairings()
+        await self.attempt_pairings()
         print(f"Closed DSP::{socket}")
 
-    def attempt_pairings(self):
+    async def attempt_pairings(self):
         print("Attempting pairings")
         print(self.unpaired_dsp, self.unpaired_game_sessions)
         # Pair on a FIFO basis
@@ -280,6 +282,6 @@ class SuperEarApplication(tornado.web.Application):
 
             print("Pairing", dsp_sock, game_session_sock)
 
-            paired = self._pair(dsp_sock, game_session_sock)
+            paired = await self._pair(dsp_sock, game_session_sock)
             assert paired, "Pairing failed"
             print(f"Paired DSP::{dsp_sock} with GS::{game_session_sock}")

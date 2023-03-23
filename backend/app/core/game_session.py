@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import inspect
 import json
 import logging  # call that deforestation
 import random
@@ -10,6 +11,7 @@ from typing import Callable, Any
 
 import tornado.websocket
 import tornado.escape
+from tornado.ioloop import IOLoop
 
 # python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
 from typing import TYPE_CHECKING
@@ -115,6 +117,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
     # main multiplexer for game logic
     async def _process_message(self, typ: str, payload: Any):
+        print("GameSessionSocketHandler::_process_message")
         match typ:
             case "string_select":
                 self._string_select(payload)
@@ -131,6 +134,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         self.send_frontend_message("error", f"Unknown message type: {typ}")
 
     async def _handle_play(self, payload: float):
+        print("GameSessionSocketHandler::_handle_play")
         if self._state != self.SessionState.WAITING_FOR_PLAY:
             self._send_to_dsp("warning was not expecting a note play message. ignoring")
             return
@@ -302,10 +306,16 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         ), "demo user not found, is the database bootstrapped?"
         self._user = search_result
 
-        self.cb_on_open(self.sock, self)
+        if inspect.iscoroutinefunction(self.cb_on_open):
+            await self.cb_on_open(self.sock, self)
+        else:
+            self.cb_on_open(self.sock, self)
 
-    async def on_close(self) -> None:
-        self.cb_on_close(self.sock)
+    def on_close(self) -> None:
+        if inspect.iscoroutinefunction(self.cb_on_close):
+            IOLoop.current().add_callback(self.cb_on_close, self.sock)
+        else:
+            self.cb_on_close(self.sock)
 
     async def on_message(self, message: str) -> None:
         assert self.ws_connection is not None
@@ -340,7 +350,11 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         assert type(data["type"]) == str, "message type should be string"
 
-        self.cb_on_message(self.sock, data)
+        if inspect.iscoroutinefunction(self.cb_on_message):
+            await self.cb_on_message(self.sock, data)
+        else:
+            self.cb_on_message(self.sock, data)
+
         await self._process_message(data["type"], data["payload"])
 
     #

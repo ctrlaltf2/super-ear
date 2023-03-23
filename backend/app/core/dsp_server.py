@@ -1,3 +1,4 @@
+import inspect
 import logging
 
 from typing import Callable
@@ -47,7 +48,10 @@ class DSPServer(TCPServer):
 
         # Call all connect callbacks
         for cb in self.on_connect:
-            cb(address, session)
+            if inspect.iscoroutinefunction(cb):
+                await cb(address, session)
+            else:
+                cb(address, session)
 
         confirmed = False
 
@@ -79,7 +83,10 @@ class DSPServer(TCPServer):
                         confirmed = True
 
                         for cb in self.on_confirm:
-                            cb(address)
+                            if inspect.iscoroutinefunction(cb):
+                                await cb(address)
+                            else:
+                                cb(address)
 
                         continue  # don't call recv_message on first time
                     else:
@@ -108,7 +115,10 @@ class DSPServer(TCPServer):
 
         # Call disconnect callbacks
         for cb in self.on_disconnect:
-            cb(address)
+            if inspect.iscoroutinefunction(cb):
+                await cb(address)
+            else:
+                cb(address)
 
     # Add a callback function to be called when a user connects. Takes full address and IOStream
     def register_connect_cb(self, cb):
