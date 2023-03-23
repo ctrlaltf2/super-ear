@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import json
 import logging  # call that deforestation
-import heapq
+import random
 
 from enum import Enum
 from typing import Callable, Any
@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     class SessionState(Enum):
+        START = "start"  # initial state
         WAITING_FOR_DSP = "waiting_for_dsp"  # waiting for a DSP to pair
         SELECTING_STRING = (
             "string_select"  # waiting for user to select a string/learning track
@@ -103,6 +104,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         self._reviewing_queue = None
         self._next_item = None
         self._start_time = None
+        self._state = self.SessionState.START
 
         # call parent ctor
         super().__init__(*args, **kwargs)
@@ -112,7 +114,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     #
 
     # main multiplexer for game logic
-    async def _process_message(self, typ: str, payload: Any):
+    def _process_message(self, typ: str, payload: Any):
         match typ:
             case "string_select":
                 self._string_select(payload)
@@ -154,7 +156,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         do_readd: bool = self._scheduler.review(self._next_item.item, note_distance, 0)
 
         if do_readd:
-            heapq.heappush(self._reviewing_queue, self._next_item)
+            self._reviewing_queue.append(self._next_item)
+            random.shuffle(self._reviewing_queue)
 
         self.send_frontend_message("note played", repr(actual_note))
         self._try_send_next_review()
@@ -162,7 +165,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     def _init_scheduling(self):
         assert self._user is not None, "pre: _init_scheduling called before _user set"
         assert (
-            self._state != self.SessionState.SCHEDULING
+            self._state == self.SessionState.SCHEDULING
         ), "pre: _state should be SCHEDULING"
 
         self._reviewing_queue = self._scheduler.generate_reviewing_queue(
@@ -181,7 +184,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self._set_state(self.SessionState.REVIEW_DONE)
             return
 
-        self._next_item = heapq.heappop(self._reviewing_queue)
+        self._next_item = self._reviewing_queue[0]
 
         # send to DSP the frequeny
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
@@ -214,9 +217,27 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
                 "error", "Invalid track identifier type. Use a string or integer"
             )
 
-    def _set_state(self, state: SessionState):
-        self._state = state
-        self.send_frontend_message("state", str(state))
+    # mirrors a state machine
+    def _set_state(self, next_state: SessionState):
+        prev_state = self._state
+        self._state = next_state
+
+        match prev_state:
+            case [
+                self.SessionState.SCHEDULING,
+                self.SessionState.SCORING,
+                self.SessionState.REMEDIATING,
+                self.SessionState.SCORING,
+                self.SessionState.WAITING_FOR_PLAY,
+            ]:
+                match next_state:
+                    case self.SessionState.WAITING_FOR_DSP:  # --> dsp d/c'd mid-play
+                        if self._reviewing_queue is not None:
+                            # Push collection to database
+                            assert self._user is not None, "pre: _user is None"
+                            self._user.set(User.collection, self._user.collection)
+
+        self.send_frontend_message("state", str(next_state))
 
     def _send_to_dsp(self, msg: str):
         print(f"Sending to DSP: {msg}")
@@ -311,7 +332,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert type(data["type"]) == str, "message type should be string"
 
         self.cb_on_message(self.sock, data)
-        await self._process_message(data["type"], data["payload"])
+        self._process_message(data["type"], data["payload"])
 
     #
     ## -- things called by external things --

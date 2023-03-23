@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 
 from tornado.iostream import IOStream
@@ -84,9 +83,7 @@ class DSPSession:
             self.send_message("error invalid payload (should be float)")
             return
 
-        asyncio.get_event_loop().run_until_complete(
-            self.game_session._process_message("play", payload_as_float)
-        )
+        self.game_session._process_message("play", payload_as_float)
 
     def pair(self, game_session: GameSessionSocketHandler):
         assert self.game_session is None

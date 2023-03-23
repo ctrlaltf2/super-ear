@@ -50,16 +50,16 @@ class Collection(BaseModel):
         return f"Collection(\n\ttracks={str(self.tracks)}\n)"
 
     def get_active_track(self) -> Track:
-        return self.tracks[self._active_track_index]
+        return self.tracks[self.active_track_index]
 
     def set_active_track(self, identifier: str | int):
         if type(identifier) is str:
             # Find the track with the matching name
             for i, track in enumerate(self.tracks):
                 if track.name == identifier:
-                    self._active_track_index = i
+                    self.active_track_index = i
                     break
             else:
                 raise ValueError(f"Track with name {identifier} not found")
         elif type(identifier) is int:
-            self._active_track_index = identifier
+            self.active_track_index = identifier
