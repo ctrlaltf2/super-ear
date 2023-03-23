@@ -5,22 +5,21 @@ import tornado.web
 
 import tornado.httpserver
 import tornado.ioloop
-from tornado.options import options, define
+from tornado.options import define
 
 from app.super_ear import SuperEarApplication
 from app.db.init_db import init, bootstrap_db
 
 
 define("debug", default=False, help="Debug mode for the application")
+
 logger = logging.getLogger(__name__)
 
 
-if __name__ == "__main__":
-    options.parse_command_line()
-
+async def main():
     # setup DB
-    asyncio.get_event_loop().run_until_complete(init())
-    asyncio.get_event_loop().run_until_complete(bootstrap_db())
+    await init()
+    await bootstrap_db()
 
     # Setup main app
     app = SuperEarApplication()
@@ -29,5 +28,9 @@ if __name__ == "__main__":
     server = tornado.httpserver.HTTPServer(app)
     server.listen(8000)
 
-    # run
-    tornado.ioloop.IOLoop.current().start()
+    shutdown_event = asyncio.Event()
+    await shutdown_event.wait()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
