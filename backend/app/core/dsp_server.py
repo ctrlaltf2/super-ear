@@ -2,7 +2,6 @@ import logging
 
 from typing import Callable
 
-from tornado import gen
 from tornado.iostream import IOStream, StreamClosedError
 from tornado.options import define
 from tornado.tcpserver import TCPServer
@@ -91,7 +90,7 @@ class DSPServer(TCPServer):
 
                 if confirmed:  # delegate to the DSPSession the message
                     # Call the session's recv_message function
-                    session.recv_message(decoded_data)
+                    await session.recv_message(decoded_data)
             except StreamClosedError:
                 logger.warning(f"Lost client at host {address[0]}:{address[1]}")
 
