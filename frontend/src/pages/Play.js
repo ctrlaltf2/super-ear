@@ -4,7 +4,7 @@ function Play(){
 
     const [bids, setBids] = useState([0]);
 
-    const ws = new WebSocket("wss://ws.bitstamp.net");
+    const ws = new WebSocket("localhost:3000/game_session");
 
     const apiCall = {
         event: "bts:subscribe",
