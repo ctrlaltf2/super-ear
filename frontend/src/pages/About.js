@@ -10,12 +10,13 @@ function About(){
                 <h1 class = "pt-[1%]">
                     About
                 </h1>
-                <p class = "text-base pt-[3%]"> Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. </p>
-                
-                <h1 class = "pt-[5%] pb-[4%]">
+                <div className="flex flex-wrap bg-slate-800 py-[3%] px-[2%] w-[95%] ml-[2%] mt-[2%] opacity-90 rounded-xl shadow-md"> 
+                <p class = "text-base"> Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. </p>                 
+                </div> 
+                <h1 class = "pt-[3%] pb-[4%]">
                     Meet The Team
                 </h1>
-                <div class = "flex flex-wrap">
+                <div class = "flex flex-wrap bg-slate-800 py-[3%] px-[2%] w-[95%] ml-[2%] opacity-90 rounded-xl shadow-md">
                     <BiographySquare 
                         Name = "Elizabeth Gilman" 
                         Pic = {basePic}
