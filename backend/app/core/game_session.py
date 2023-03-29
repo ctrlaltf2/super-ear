@@ -111,6 +111,10 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         # call parent ctor
         super().__init__(*args, **kwargs)
 
+    # oop
+    def check_origin(self, origin):
+        return True
+
     #
     ## -- game logic --
     #
