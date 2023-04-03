@@ -1,4 +1,5 @@
 import datetime
+import pytz
 
 from pydantic import BaseModel
 from pydantic.fields import Field
@@ -16,9 +17,9 @@ class Collection(BaseModel):
     # Index of the active track
     active_track_index: int = Field(0, ge=0, description="index of the active track")
 
-    # Epoch for the collection
+    # Epoch for the collection (UTC)
     epoch: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        default_factory=lambda: datetime.datetime.now(tz=pytz.utc),
         description="epoch for the collection (UTC)",
     )
 

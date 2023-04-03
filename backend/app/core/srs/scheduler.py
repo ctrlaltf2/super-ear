@@ -129,7 +129,7 @@ class V1(Scheduler):
             logger.error(f"Unknown timezone '{tz_str}'")
             raise
 
-        global_now = datetime.datetime.now(datetime.timezone.utc)
+        global_now = datetime.datetime.now(tz=pytz.utc)
 
         # *danger zone starts playing*
 
@@ -218,7 +218,7 @@ class V1(Scheduler):
     # get the learning ahead cutoff time (global)
     @staticmethod
     def _learn_cutoff(_collection: Collection) -> datetime.datetime:
-        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        return datetime.datetime.now(tz=pytz.utc) + datetime.timedelta(
             hours=_collection.learn_ahead_interval
         )
 
