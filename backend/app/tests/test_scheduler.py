@@ -55,3 +55,44 @@ class TestSchedulerV1:
 
                 assert calculated_start_loc.date() == expected_loc.date()
                 assert calculated_start_loc.time() == expected_loc.time()
+
+    def test_basic_queue_building(self):
+        with freezegun.freeze_time("2023-01-01 00:00:00") as freezer:
+            # Initial test: a new collection
+            col: Collection = DefaultCollections.get("GuitarStandard")
+            q = V1.generate_reviewing_queue(col)
+
+            # to start, collection size should be == new per day
+            assert len(q) == col.max_new_per_day
+
+            # all should be previwing to start
+            for item in q:
+                assert item.item.state == ReviewState.Previewing
+
+            max_previews = col.max_card_previews
+
+            # preview all cards
+            for i in range(max_previews):
+                for item in q:
+                    should_reinsert = V1.review(col, item.item, 0, 0)
+
+                    # after max previews, shouldn't resinert and should be learning
+                    if i == max_previews - 1:
+                        assert not should_reinsert
+                        assert item.item.state == ReviewState.Learning
+
+            # pass a day
+            freezer.move_to("2023-01-02 00:00:00")
+            q = V1.generate_reviewing_queue(col)
+
+            assert len(q) == col.max_new_per_day * 2
+
+            # pass another day, without reviewing anything in the last (should yield unchanged queue)
+            freezer.move_to("2023-01-03 00:00:00")
+            q = V1.generate_reviewing_queue(col)
+
+            assert len(q) == col.max_new_per_day * 2
+
+            # TODO: many more cases to be checked here:
+            # - max review per day
+            # - proper due checking
