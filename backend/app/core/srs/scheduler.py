@@ -1,9 +1,11 @@
 import datetime
-import heapq
 import logging
 import random
 
+import pytz
+
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from typing import Any, Optional
 
 from app.models.collection import Collection
@@ -25,7 +27,9 @@ class Scheduler(ABC):
     # Reviews an item, updating its scheduler parameters
     @staticmethod
     @abstractmethod
-    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> bool:
+    def review(
+        collection: Collection, item: ReviewItem, note_distance: int, ms_elapsed: int
+    ) -> bool:
         pass
 
     # Gets the next due date for an item. Ideally, generate_reviewing_queue uses this.
@@ -64,56 +68,132 @@ class V1(Scheduler):
     def generate_reviewing_queue(
         _collection: Collection,
     ) -> list[OrderedReviewItem]:
-        # Store a current timestamp to assign to unseen items
-        now = datetime.datetime.now(datetime.timezone.utc)
-        # TODO: Time zone should match system time zone, conversion needed here
-        tomorrow = datetime.datetime(
-            year=now.year, month=now.month, day=now.day, tzinfo=datetime.timezone.utc
-        ) + datetime.timedelta(days=1)
-
         # Get all items first
         review_items = _collection.get_active_track().review_items
 
         # Split into new/learning/review items
-        all_new_items = [
-            OrderedReviewItem(item, V1.get_due_date(_collection, item))
-            for item in review_items
-            if item.state == ReviewState.Unseen
-        ]
-        all_learning_items = [
-            OrderedReviewItem(item, V1.get_due_date(_collection, item))
-            for item in review_items
-            if item.state == ReviewState.Learning
-        ]
-        all_reviewing_items = [
-            OrderedReviewItem(item, V1.get_due_date(_collection, item))
-            for item in review_items
-            if item.state == ReviewState.Reviewing
-        ]
+        items_by_state: defaultdict[ReviewState, list[OrderedReviewItem]] = defaultdict(
+            list
+        )
 
-        # TODO: Take into account the current day & the collections last review times to use the max review limits appropriately, to be per day and not per session
+        # add all due items to the dict
+        for review_item in review_items:
+            due_date = V1.get_due_date(_collection, review_item)
+
+            if V1.is_due(_collection, review_item, due_date):
+                items_by_state[review_item.state].append(
+                    OrderedReviewItem(review_item, due_date)
+                )
+
+        all_new_items = (
+            items_by_state[ReviewState.Previewing] + items_by_state[ReviewState.Unseen]
+        )
+
         new_items_today = all_new_items[: _collection.max_new_per_day]
         for item in new_items_today:
-            item.item.state = ReviewState.Learning
+            item.item.state = ReviewState.Previewing
 
-        # For learning/review, get items due before EOD current day
-        learning_items_today = [
-            item for item in all_learning_items if item.due_date < tomorrow
-        ]
+        # For learning/review, get items due before the learn cutoff
+        learning_items_today = [item for item in items_by_state[ReviewState.Learning]]
 
-        reviewing_items_today = [
-            item for item in all_reviewing_items if item.due_date < tomorrow
-        ]
+        reviewing_items_today = [item for item in items_by_state[ReviewState.Reviewing]]
 
-        # Generate a priority queue of items sorted by due date
-        # TODO: Restructure to make this take into account _collection.do_mix_new_review. Currently is implicit on the scheduler's due_dates, of which this sorts
-        # Use a doubly-keyed sort? State then by due_date within that state.
+        # TODO: Restrict max learning/reiew items/day here
         queue = new_items_today + learning_items_today + reviewing_items_today
-        heapq.heapify(queue)
+
+        # shuffle the queue
+        random.shuffle(queue)
 
         return queue
 
-    # pure
+    # get if a item is due
+    @staticmethod
+    def is_due(_collection: Collection, _item: ReviewItem, due_date: datetime.datetime):
+        if _item.state == ReviewState.Unseen:
+            return True
+        elif _item.state == ReviewState.Previewing:
+            return True
+        elif _item.state == ReviewState.Learning:
+            return due_date < V1._learn_cutoff(_collection)
+        elif _item.state == ReviewState.Reviewing:
+            return due_date <= V1.get_today_start(_collection)
+
+    # Get the timestamp for the start of the current study day.
+    @staticmethod
+    def get_today_start(_collection: Collection) -> datetime.datetime:
+        tz_str = _collection.timezone
+
+        try:
+            tz = pytz.timezone(tz_str)
+        except pytz.exceptions.UnknownTimeZoneError:
+            logger.error(f"Unknown timezone '{tz_str}'")
+            raise
+
+        global_now = datetime.datetime.now(datetime.timezone.utc)
+
+        # *danger zone starts playing*
+
+        loc_now = tz.normalize(global_now.astimezone(tz))
+
+        # very hacky yet easy to understand because getting datetime code right is like
+        # trying to reverse engineer a JavaScript applicatoin by only using voltages and a multimeter on the CPU that runs it
+
+        # goal: round now() to the nearest (start of a day + next_day_start_hours)
+        yester_yesterday_start = loc_now.replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        yester_yesterday_start = tz.normalize(
+            yester_yesterday_start
+            + datetime.timedelta(days=-2, hours=_collection.next_day_start_hours)
+        )
+
+        yesterday_start = loc_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = tz.normalize(
+            yesterday_start
+            + datetime.timedelta(days=-1, hours=_collection.next_day_start_hours)
+        )
+
+        today_start = loc_now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_start = tz.normalize(
+            today_start + datetime.timedelta(hours=_collection.next_day_start_hours)
+        )
+
+        # now, calculate and store the differences
+        yester_yesterday_diff = loc_now - yester_yesterday_start
+        yesterday_diff = loc_now - yesterday_start
+        today_diff = loc_now - today_start
+
+        # throw them into an array and sort it to lazily find the smallest difference
+        diffs = sorted(
+            [
+                (
+                    yester_yesterday_diff / datetime.timedelta(hours=1.0),
+                    yester_yesterday_start,
+                ),
+                (yesterday_diff / datetime.timedelta(hours=1.0), yesterday_start),
+                (today_diff / datetime.timedelta(hours=1.0), today_start),
+            ]
+        )
+
+        # Then get the first dt that is not in the future.
+        rounded_datetime = None
+
+        for _, dt in diffs:
+            if dt > loc_now:
+                continue
+            else:
+                rounded_datetime = dt
+                break
+
+        assert rounded_datetime is not None
+
+        # *danger zone stops playing*
+
+        # and normalize it back to UTC
+        global_today_start = rounded_datetime.astimezone(pytz.utc)
+
+        return global_today_start
+
     @staticmethod
     def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
         if _item.last_review is not None:  # triggers for learning and reviewing items
@@ -123,9 +203,24 @@ class V1(Scheduler):
 
             return last_review_date + V1._calculate_interval(_item)
         else:  # triggers for unseen items
-            return datetime.datetime.now(
-                datetime.timezone.utc
-            ) + V1._calculate_interval(_item)
+            return V1.get_today_start(_collection)
+
+    # get the last review time (global) for an item
+    @staticmethod
+    def _last_review_time(
+        _collection: Collection, _item: ReviewItem
+    ) -> datetime.datetime | None:
+        if _item.last_review is not None:
+            return _collection.epoch + datetime.timedelta(days=_item.last_review)
+        else:
+            return None
+
+    # get the learning ahead cutoff time (global)
+    @staticmethod
+    def _learn_cutoff(_collection: Collection) -> datetime.datetime:
+        return datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+            hours=_collection.learn_ahead_interval
+        )
 
     # helper to map numbers from one range to another proportionally
     # cf. arduino map
@@ -137,29 +232,54 @@ class V1(Scheduler):
 
     # Reviews an item, returning a reviewed copy
     # not pure / side effects- modifies ease factor and last review time, last interval
+    # returns: True if should review again this session
     @staticmethod
-    def review(item: ReviewItem, note_distance: int, ms_elapsed: int) -> bool:
-        # print(f"Reviewing item {item}")
-        # Update ease factor
+    def review(
+        _collection: Collection, item: ReviewItem, note_distance: int, ms_elapsed: int
+    ) -> bool:
         # ref: SM-2 algorithm, http://super-memory.com/english/ol/sm2.htm
+        # modifications made to above for better usability
         err = float(note_distance)
         err = max(0, min(5, err))  # clamp note distance to 0-5
+
+        # update review time
+        if item.state != ReviewState.Unseen:
+            diff = V1.get_today_start(_collection).date() - _collection.epoch.date()
+            item.last_review = diff.days
 
         match item.state:
             case ReviewState.Unseen:
                 print("Item is new")
-                item.state = ReviewState.Learning
+                item.state = ReviewState.Previewing
                 return True
+            case ReviewState.Previewing:
+                print("Item is previewing")
+                was_correct = note_distance <= 0.001
+
+                if was_correct:
+                    print("Item was correct")
+                    item.n_previews += 1
+                else:
+                    print("Item was incorrect")
+                    # increment n_previews with a 50% chance
+                    if random.random() < 0.5:
+                        item.n_previews += 1
+
+                if item.n_previews >= _collection.max_card_previews:
+                    print("Item graduated from previewing")
+                    item.state = ReviewState.Learning
+                    return False  # for now, don't put back into the learning queue.
+                else:
+                    return True
+
             case ReviewState.Learning:
                 print("Item is learning")
                 was_correct = note_distance <= 0.001
 
                 if was_correct:
                     print("Item was correct")
-                    pass
                 else:
                     print("Item was incorrect")
-                    pass
 
                 if was_correct:  # increment learning step // go to reviewing state
                     if (
@@ -211,29 +331,27 @@ class V1(Scheduler):
 
                 return q < 4
 
-    # pure
     @staticmethod
     def _calculate_interval(_item: ReviewItem) -> datetime.timedelta:
         match _item.state:
             case ReviewState.Unseen:
+                return V1._unseen_interval(_item)
+            case ReviewState.Previewing:
                 return V1._unseen_interval(_item)
             case ReviewState.Learning:
                 return V1._learning_interval(_item)
             case ReviewState.Reviewing:
                 return V1._reviewing_interval(_item)
 
-    # pure
     @staticmethod
     def _unseen_interval(_item: ReviewItem, mx=8) -> datetime.timedelta:
         # Add a random number of seconds to add some jitter to the due date for unseen items
         return datetime.timedelta(seconds=random.random() * 2 * mx - mx)
 
-    # pure
     @staticmethod
     def _learning_interval(_item: ReviewItem) -> datetime.timedelta:
         return datetime.timedelta(minutes=_item.learning_steps[_item.learning_index])
 
-    # pure
     @staticmethod
     def _reviewing_interval(_item: ReviewItem) -> datetime.timedelta:
         # ref: http://super-memory.com/english/ol/sm2.htm because Anki's algo is a bit opaque (tech debt from supporting all its features)
@@ -251,53 +369,3 @@ class V1(Scheduler):
         days_ef = min(days_ef, 90)
 
         return datetime.timedelta(days=days_ef)
-
-
-# Driver to help with scheduler API testing
-class Driver:
-    @staticmethod
-    def main():
-        # Simulates a user session
-        # Realistically, this would be tracked asynchronously
-
-        from app.models import DefaultCollections
-        from app.core.srs.spn import SPN
-
-        # session.state = initializing
-
-        # Get the user's collection
-        # TODO: Collection database retreival logic
-        user_collection = DefaultCollections.get("GuitarStandard")
-
-        scheduler: Any = V1
-
-        # session -> generating_queue
-        # queue is a priority queue of (due_date, item) sorted due_date ascending
-        reviewing_queue = scheduler.generate_reviewing_queue(user_collection)
-
-        # session.state = reviewing
-
-        while not reviewing_queue.empty():
-            # Get the next item to review
-            next_item: ReviewItem = reviewing_queue.get()
-
-            # session.state -> awaiting_response
-            # Send a request to the user to review the item
-            # TODO: Implement, this is on DSP server side
-
-            # Assume user's response is present, they get one off
-            response = SPN.from_str(next_item.content) + 1
-
-            # session.state -> scoring
-            note_distance = abs(response - next_item.content)
-
-            scheduler.review(next_item, note_distance, 0)
-
-            due_date = scheduler.get_due_date(next_item)
-            if due_date < datetime.datetime.now(datetime.timezone.utc):
-                reviewing_queue.put(OrderedReviewItem(next_item, due_date))
-
-            # session.state -> reviewing
-
-        # session over -> store collection
-        # TODO: Store collection database
