@@ -4,6 +4,7 @@ import datetime
 import inspect
 import json
 import logging  # call that deforestation
+import pytz
 import random
 
 from enum import Enum
@@ -161,12 +162,21 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         note_distance: int = actual_note - expected_note
 
-        do_readd: bool = self._scheduler.review(self._next_item.item, note_distance, 0)
+        do_readd: bool = self._scheduler.review(
+            self._user.collection, self._next_item.item, note_distance, 0
+        )
         await self._sync_collection()  # sync
 
         if do_readd:
-            self._reviewing_queue.append(self._next_item)
             random.shuffle(self._reviewing_queue)
+
+            if len(self._reviewing_queue) > 0:
+                # then insert in a random place that's not at the start- minimize repeats
+                self._reviewing_queue.insert(
+                    random.randint(1, len(self._reviewing_queue)), self._next_item
+                )
+            else:  # just insert at the start
+                self._reviewing_queue.insert(0, self._next_item)
 
         self.send_frontend_message("note played", repr(actual_note))
         await self._try_send_next_review()
@@ -181,7 +191,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self._user.collection
         )
 
-        self._start_time = datetime.datetime.now(datetime.timezone.utc)
+        self._start_time = datetime.datetime.now(tz=pytz.utc)
 
         await self._try_send_next_review()
 
