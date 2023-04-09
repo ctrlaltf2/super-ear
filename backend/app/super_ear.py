@@ -1,5 +1,7 @@
 import logging
 import random
+import secrets
+import string
 
 import tornado.web
 
@@ -13,6 +15,7 @@ from collections import deque
 from tornado.options import options
 from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 
+from app.api.auth import AuthCreateHandler, AuthLoginHandler, AuthLogoutHandler
 from app.core.dsp_server import DSPServer
 from app.core.game_session import GameSessionSocketHandler
 from app.core.dsp_session import DSPSession
@@ -135,7 +138,13 @@ class SuperEarApplication(tornado.web.Application):
                 headers.pop("Server")
                 return status_code, headers, chunk
 
-        super().__init__([], transforms=[WhyDoYouSendServerTokens])
+        corpus = string.ascii_letters + string.digits
+        secret = "".join(secrets.choice(corpus) for _ in range(16))
+        secret = secret.encode("utf-8")
+
+        super().__init__(
+            [], transforms=[WhyDoYouSendServerTokens], cookie_secret=secret
+        )
 
         self.add_handlers(
             r"^.*$",
@@ -150,6 +159,9 @@ class SuperEarApplication(tornado.web.Application):
                     },
                 ),
                 (r"/play", RedirectHandler, {"url": "/"}),
+                (r"/auth/create", AuthCreateHandler),
+                (r"/auth/login", AuthLoginHandler),
+                (r"/auth/logout", AuthLogoutHandler),
                 (
                     r"/(.*)",
                     StaticFileHandler,

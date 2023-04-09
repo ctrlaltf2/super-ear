@@ -7,8 +7,16 @@ from pydantic.fields import Field
 
 # Enum for the three states of a review item; unseen, learning, and reviewing
 class ReviewState(Enum):
+    # item is totally new
     Unseen = auto()
+
+    # item is being previewed; this is a special state for before the learning phase. gives person time to get familiar with the item.
+    Previewing = auto()
+
+    # item is being learned, e.g. reviewing in increasing intervals, but without penalty for failure
     Learning = auto()
+
+    # item is being reviewed. difficulty factor updates now, can be "penalized" for failing.
     Reviewing = auto()
 
 
@@ -36,24 +44,24 @@ class ReviewItem(BaseModel):
     )
 
     # Ease-factor / difficulty of the item, captured as a float. No dimensions.
-    # Initialized to 2.5, since that's the default in Anki & SM-2.
+    # Initialized to 2.3. Some initial testing with Super Ear in a real-ish setting, average Ease fell to 230%.
     ease_factor: float = Field(
-        2.5, description="ease factor. estimates difficulty of the item"
+        2.3, description="ease factor. estimates difficulty of the item"
     )
 
     # The current interval, in days
     current_interval: Optional[float] = Field(description="current interval, in days")
+
+    # Number of times the item has been *pre*viewed
+    n_previews: int = Field(
+        0, description="number of times the item has been previewed"
+    )
 
     # Note: No time delta is used here because the scheduler will be
     # responsible and calculate it during each review session
 
     # equality comparisons are based on the content,
     # not the scheduler parameters
-    """
-    def __eq__(self, other: Self) -> bool:
-        return self.content == other.content
-    """
-
     def __str__(self):
         return str(self.content)
 

@@ -4,6 +4,7 @@ import datetime
 import inspect
 import json
 import logging  # call that deforestation
+import pytz
 import random
 
 from enum import Enum
@@ -81,6 +82,12 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     # start time of the review session, if it exists
     _start_time: datetime.datetime | None
 
+    async def get_current_user(self) -> str | None:
+        if self.get_secure_cookie("user"):
+            return tornado.escape.to_unicode(self.get_secure_cookie("user"))
+        else:
+            return None
+
     def __init__(self, *args, **kwargs):
         assert "on_open" in kwargs
         assert callable(kwargs["on_open"])
@@ -155,18 +162,25 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         actual_note: SPN = SPN.from_freq(payload)
         expected_note: SPN = SPN.from_str(self._next_item.item.content)
 
-        logger.info(
-            f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}"
+        print(f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}")
+
+        note_distance: int = abs(actual_note - expected_note)
+
+        do_readd: bool = self._scheduler.review(
+            self._user.collection, self._next_item.item, note_distance, 0
         )
-
-        note_distance: int = actual_note - expected_note
-
-        do_readd: bool = self._scheduler.review(self._next_item.item, note_distance, 0)
         await self._sync_collection()  # sync
 
         if do_readd:
-            self._reviewing_queue.append(self._next_item)
             random.shuffle(self._reviewing_queue)
+
+            if len(self._reviewing_queue) > 0:
+                # then insert in a random place that's not at the start- minimize repeats
+                self._reviewing_queue.insert(
+                    random.randint(1, len(self._reviewing_queue)), self._next_item
+                )
+            else:  # just insert at the start
+                self._reviewing_queue.insert(0, self._next_item)
 
         self.send_frontend_message("note played", repr(actual_note))
         await self._try_send_next_review()
@@ -181,7 +195,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self._user.collection
         )
 
-        self._start_time = datetime.datetime.now(datetime.timezone.utc)
+        self._start_time = datetime.datetime.now(tz=pytz.utc)
 
         await self._try_send_next_review()
 
@@ -295,6 +309,17 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self.ws_connection is not None
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
+
+        # check auth
+        possible_username = await self.get_current_user()
+
+        if possible_username is None:
+            self.close(code=401, reason="Unauthorized")
+            return
+
+        print(f"Auth'd as {possible_username}")
+
+        self._username = possible_username
 
         self.sock = self.ws_connection.stream.socket.getpeername()
 
