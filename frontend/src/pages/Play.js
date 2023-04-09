@@ -3,17 +3,70 @@ import {useState, useRef, useEffect } from 'react';
 import {Oval} from 'react-loader-spinner';
 import fretboard from '../components/pics/fretboard-notes.png';
 import { FretMatrix } from '../components/FretMatrix';
+import { HistoryBox } from '../components/HistoryBox';
 
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("connection_error");
+    const [curState, setCurState] = useState("waiting_for_play");
+    const [curNote, setCurNote] = useState(null);
+    const [curAcc, setCurAcc] = useState([0, 0]);
+    const [history, setHistory] = useState([]);
+    const [counter, setCounter] = useState("00:00:00");
 
-    
+    //functions for history
+    function addCorrectNote(){
+        setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["A"]));
+        const newAcc = curAcc.slice();
+        newAcc[0] += 1;
+        newAcc[1] += 1
+        setCurAcc(newAcc);
+    };
+    function addIncorrectNote(){
+        setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["B"]));
+        const newAcc = curAcc.slice();
+        newAcc[1] += 1
+        setCurAcc(newAcc);
+    };
+
+    //clock functions    
+    function updateTimer(){
+        let secs = 1 + parseInt(counter.slice(-2));
+        let minutes = parseInt(counter.slice(3,5)); 
+        let hours = parseInt(counter.slice(0, 2));
+        if (secs >= 60){
+            secs = 0;
+            minutes += 1;
+        }
+        if (minutes >= 60){
+            minutes = 0;
+            hours += 1;
+        }
+        if (hours >= 99){
+            hours = 0;
+        }
+        secs = secs.toString();
+        if (secs.length == 1){
+            secs = "0" + secs;
+        }
+        minutes = minutes.toString();
+        if (minutes.length == 1){
+            minutes = "0" + minutes;
+        }
+        hours = hours.toString();
+        if (hours.length == 1){
+            hours = "0" + hours;
+        }
+        setCounter(hours + ":" + minutes + ":" + secs)
+    }
+    useEffect(() =>{
+            setTimeout(() => updateTimer(), 1000);
+    }, [counter])
+
     //component lifecycle (ws connection/disconnection)
     const ws = useRef();
     if (!ws.current) {
-      ws.current = new WebSocket('ws://localhost:8000/game_session');
+      ws.current = new WebSocket('ws://172.81.131.131:8000/game_session');
     }
 
     useEffect(() => {
@@ -31,6 +84,11 @@ function Play(){
                     
                     if (json["type"] == "state") {
                         setCurState(json["payload"]);
+                        setCurNote(null);
+                    }
+                    else if(json["type"] == "note played"){
+                        setCurNote(json["payload"])
+
                     }
                     
                 }
@@ -109,11 +167,39 @@ function Play(){
     else if (curState == "scheduling"){
         return(
         <div className = "min-h-screen bg-black">
-                <div className = "flex min-h-screen justify-center items-center text-8xl text-white">
+                <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
                     <Oval
                         color="white"
                         secondaryColor="black"
                     />
+                    <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
+                    <div className="flex-1">
+                        Accuracy
+                        <div className="mt-[5%]">
+                            {curAcc[0]} / {curAcc[1]}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        Time Played
+                        <div className="mt-[5%]">
+                            {counter}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        History
+                        <div className="mt-[5%]">
+                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+                        {
+                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                                return <h1>{elem}</h1>
+                            }
+                            )
+                        }
+                        </div>
+                            <HistoryBox history={history}/>
+                        </div>
+                    </div>
+                </div>
                 </div>
             </div>
         );
@@ -121,13 +207,37 @@ function Play(){
     else if (curState == "waiting_for_play"){
         return(
         <div className = "min-h-screen bg-black">
-            <div className = "flex min-h-screen justify-center items-center text-8xl text-white">
-                Waiting For User To Play
-                <Oval
-                    color="white"
-                    secondaryColor="black"
-                />
+            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
+                {curNote}
             </div>
+            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
+                    <div className="flex-1">
+                        Accuracy
+                        <div className="mt-[5%]">
+                            {curAcc[0]} / {curAcc[1]}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        Time Played
+                        <div className="mt-[5%]">
+                            {counter}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        History
+                        <div className="mt-[5%]">
+                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+                        {
+                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                                return <h1>{elem}</h1>
+                            }
+                            )
+                        }
+                        </div>
+                            <HistoryBox history={history}/>
+                        </div>
+                    </div>
+                </div>
         </div>
         );
     }
@@ -159,7 +269,7 @@ function Play(){
                 Can't Connect to Websocket, Please Reload
             </div>
         </div>
-        );
+        );  
     }
 };
 
