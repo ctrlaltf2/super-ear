@@ -237,6 +237,7 @@ class V1(Scheduler):
     def review(
         _collection: Collection, item: ReviewItem, note_distance: int, ms_elapsed: int
     ) -> bool:
+        assert note_distance >= 0
         # ref: SM-2 algorithm, http://super-memory.com/english/ol/sm2.htm
         # modifications made to above for better usability
         err = float(note_distance)
