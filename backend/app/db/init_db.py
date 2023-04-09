@@ -1,3 +1,9 @@
+import bcrypt
+import secrets
+import string
+
+import tornado.escape
+
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
@@ -37,5 +43,14 @@ async def bootstrap_db():
     print("Bootstrapping DB with demo user")
 
     # make a demo user and insert into DB
-    demo_user = User(username="demo")
+    corpus = string.ascii_letters + string.digits
+    password = "".join(secrets.choice(corpus) for _ in range(16))
+    print(f"Demo user password: '{password}'")
+
+    hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+
+    demo_user = User(
+        username="demo",
+        hashed_password=tornado.escape.to_unicode(hashed_password),
+    )
     await demo_user.insert()
