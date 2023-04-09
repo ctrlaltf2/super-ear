@@ -14,6 +14,8 @@ class User(Document):
         ..., description="The user's username", max_length=32, min_length=4
     )
 
+    hashed_password: str = Field(..., description="The user's hashed password. bcrypt")
+
     collection: Collection = Field(
         default_factory=lambda: DefaultCollections.get("GuitarStandard"),
         description="The collection of the user. Future: Will support multiple.",
