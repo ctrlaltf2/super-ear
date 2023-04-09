@@ -156,11 +156,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         actual_note: SPN = SPN.from_freq(payload)
         expected_note: SPN = SPN.from_str(self._next_item.item.content)
 
-        logger.info(
-            f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}"
-        )
+        print(f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}")
 
-        note_distance: int = actual_note - expected_note
+        note_distance: int = abs(actual_note - expected_note)
 
         do_readd: bool = self._scheduler.review(
             self._user.collection, self._next_item.item, note_distance, 0
