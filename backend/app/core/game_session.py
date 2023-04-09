@@ -82,6 +82,12 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     # start time of the review session, if it exists
     _start_time: datetime.datetime | None
 
+    async def get_current_user(self) -> str | None:
+        if self.get_secure_cookie("user"):
+            return tornado.escape.to_unicode(self.get_secure_cookie("user"))
+        else:
+            return None
+
     def __init__(self, *args, **kwargs):
         assert "on_open" in kwargs
         assert callable(kwargs["on_open"])
@@ -303,6 +309,17 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self.ws_connection is not None
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
+
+        # check auth
+        possible_username = await self.get_current_user()
+
+        if possible_username is None:
+            self.close(code=401, reason="Unauthorized")
+            return
+
+        print(f"Auth'd as {possible_username}")
+
+        self._username = possible_username
 
         self.sock = self.ws_connection.stream.socket.getpeername()
 
