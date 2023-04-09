@@ -13,6 +13,7 @@ from collections import deque
 from tornado.options import options
 from tornado.web import StaticFileHandler, RedirectHandler, OutputTransform
 
+from app.api.auth import AuthCreateHandler, AuthLoginHandler, AuthLogoutHandler
 from app.core.dsp_server import DSPServer
 from app.core.game_session import GameSessionSocketHandler
 from app.core.dsp_session import DSPSession
@@ -155,6 +156,9 @@ class SuperEarApplication(tornado.web.Application):
                     StaticFileHandler,
                     {"path": "/super-ear/srv", "default_filename": "index.html"},
                 ),  # TODO: basic login handler here on the static side, sets a cookie. Cookie used in GameSessionSocketHandler
+                ("r/auth/create", AuthCreateHandler),
+                ("r/auth/login", AuthLoginHandler),
+                ("r/auth/logout", AuthLogoutHandler),
             ],
         )
 
