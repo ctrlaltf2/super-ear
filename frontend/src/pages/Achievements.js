@@ -112,10 +112,10 @@ function Achievements(){
 
     return(
         <div className = "min-h-screen py-5 bg-gray-700 grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-            <AchievementSquare Unlocked = {achievementStatus[0]} unlockPercent={achievementPercent[0]} Title = "Dedicated" Descr="Play For a Total of 5 Hours" Logo={guitar}/>
+            <AchievementSquare Unlocked = {achievementStatus[0]} unlockPercent={achievementPercent[0]} Title = "Well Rounded" Descr="Accuracy Above 50% On All Notes" Logo={guitar}/>
             <AchievementSquare Unlocked = {achievementStatus[1]} unlockPercent={achievementPercent[1]} Title = "Quick Learner" Descr="Increase Your Accuracy By 5% In One Week" Logo={guitar}/>
-            <AchievementSquare Unlocked = {achievementStatus[2]} unlockPercent={achievementPercent[2]} Title = "Dedicated II" Descr="Played For One Hour Today" Logo={guitar}/>
-            <AchievementSquare Unlocked = {achievementStatus[3]} unlockPercent={achievementPercent[3]} Title = "One Note Connoisseur" Descr="Have an Accuracy Above 70% on a Note" Logo={guitar}/>
+            <AchievementSquare Unlocked = {achievementStatus[2]} unlockPercent={achievementPercent[2]} Title = "One Note Connoisseur" Descr="Have an Accuracy Above 60% on a Note" Logo={guitar}/>
+            <AchievementSquare Unlocked = {achievementStatus[3]} unlockPercent={achievementPercent[3]} Title = "One Note Connoisseur II" Descr="Have an Accuracy Above 70% on a Note" Logo={guitar}/>
             <AchievementSquare Unlocked = {achievementStatus[4]} unlockPercent={achievementPercent[4]} Title = "Sharp Ear" Descr="Total Accuracy Above 60%" Logo={guitar}/>
             <AchievementSquare Unlocked = {achievementStatus[5]} unlockPercent={achievementPercent[5]} Title = "Sharper Ear" Descr="Total Accuracy Above 70%" Logo={guitar}/>
             <AchievementSquare Unlocked = {achievementStatus[6]} unlockPercent={achievementPercent[6]} Title = "Sharpest Ear" Descr="Total Accuracy Above 80%" Logo={guitar}/>

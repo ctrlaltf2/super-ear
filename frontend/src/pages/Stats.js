@@ -17,18 +17,7 @@ function Stats(){
         "11:30 2/17/23", "78%", "43"];
 
 
-    const noteStats = [
-        "A", "78%", "B",
-        "A#", "40%", "A",
-        "B", "30%", "A",
-        "C", "20%", "C#",
-        "C#", "10%", "D",
-        "D", "5%", "C#",
-        "D#", "80%", "E",
-        "E", "50%", "F",
-        "F", "30%", "G",
-        "F#", "40%", "A",
-        "G", "60%", "C"];
+  
     
     const notes = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G"];
     
@@ -40,6 +29,19 @@ function Stats(){
         }
         console.log(noteConfusion)
     }
+
+    const noteStats = [
+    "A", "78%", "B",
+    "A#", "40%", "A",
+    "B", "30%", "A",
+    "C", "20%", "C#",
+    "C#", "10%", "D",
+    "D", "5%", "C#",
+    "D#", "80%", "E",
+    "E", "50%", "F",
+    "F", "30%", "G",
+    "F#", "40%", "A",
+    "G", "60%", "C"]; 
 
     return(
         <div className = "min-h-screen bg-gray-700 grid sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
