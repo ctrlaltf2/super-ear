@@ -9,14 +9,18 @@ from app.models.user import User
 
 class BaseAuthHandler(tornado.web.RequestHandler):
     async def prepare(self):
+        print("auth prepare")
         user_id = self.get_secure_cookie("user")
+
+        print(f"user_id: {user_id}")
 
         if user_id:
             self.user_id = user_id
+        else:
+            self.user_id = None
 
 
 class AuthCreateHandler(BaseAuthHandler):
-    @tornado.web.authenticated
     async def post(self):
         # must be logged in to create users
         if not self.user_id:
@@ -46,16 +50,20 @@ class AuthCreateHandler(BaseAuthHandler):
 
 class AuthLoginHandler(BaseAuthHandler):
     async def post(self):
-        username = tornado.escape.utf8(self.get_argument("username"))
-        password = tornado.escape.utf8(self.get_argument("password"))
+        username = tornado.escape.to_unicode(self.get_argument("username"))
+        password = tornado.escape.to_unicode(self.get_argument("password"))
 
         user = await User.find_one(User.username == username)
 
         if user is None:
+            print(f"no user with name '{username}'")
             self.set_status(401)
             return
 
-        if not bcrypt.checkpw(password, tornado.escape.utf8(user.hashed_password)):
+        if not bcrypt.checkpw(
+            tornado.escape.utf8(password), tornado.escape.utf8(user.hashed_password)
+        ):
+            print(f"password '{password}' is bad")
             self.set_status(401)
             return
 

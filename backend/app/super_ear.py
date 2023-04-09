@@ -1,5 +1,7 @@
 import logging
 import random
+import secrets
+import string
 
 import tornado.web
 
@@ -136,7 +138,13 @@ class SuperEarApplication(tornado.web.Application):
                 headers.pop("Server")
                 return status_code, headers, chunk
 
-        super().__init__([], transforms=[WhyDoYouSendServerTokens])
+        corpus = string.ascii_letters + string.digits
+        secret = "".join(secrets.choice(corpus) for _ in range(16))
+        secret = secret.encode("utf-8")
+
+        super().__init__(
+            [], transforms=[WhyDoYouSendServerTokens], cookie_secret=secret
+        )
 
         self.add_handlers(
             r"^.*$",
@@ -151,14 +159,14 @@ class SuperEarApplication(tornado.web.Application):
                     },
                 ),
                 (r"/play", RedirectHandler, {"url": "/"}),
+                (r"/auth/create", AuthCreateHandler),
+                (r"/auth/login", AuthLoginHandler),
+                (r"/auth/logout", AuthLogoutHandler),
                 (
                     r"/(.*)",
                     StaticFileHandler,
                     {"path": "/super-ear/srv", "default_filename": "index.html"},
                 ),  # TODO: basic login handler here on the static side, sets a cookie. Cookie used in GameSessionSocketHandler
-                ("r/auth/create", AuthCreateHandler),
-                ("r/auth/login", AuthLoginHandler),
-                ("r/auth/logout", AuthLogoutHandler),
             ],
         )
 
