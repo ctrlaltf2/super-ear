@@ -9,6 +9,7 @@ const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const About = React.lazy(() => import('./pages/About'));
 const Achievements = React.lazy(() => import('./pages/Achievements'));
 const Stats = React.lazy(() => import('./pages/Stats'));
+const Login = React.lazy(() => import('./pages/Login'));
 import Play from './pages/Play';
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
             <Achievements />
             </React.Suspense>} />
           <Route path="play" element={<Play />} />
+          <Route path="Login" element={<Login />} />
         </Route>
       </Routes>
     </div>
