@@ -21,6 +21,11 @@ class BaseAuthHandler(tornado.web.RequestHandler):
 
 
 class AuthCreateHandler(BaseAuthHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
     async def post(self):
         # must be logged in to create users
         if not self.user_id:
@@ -49,6 +54,11 @@ class AuthCreateHandler(BaseAuthHandler):
 
 
 class AuthLoginHandler(BaseAuthHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
     async def post(self):
         username = tornado.escape.to_unicode(self.get_argument("username"))
         password = tornado.escape.to_unicode(self.get_argument("password"))
@@ -71,5 +81,10 @@ class AuthLoginHandler(BaseAuthHandler):
 
 
 class AuthLogoutHandler(BaseAuthHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
     async def post(self):
         self.clear_cookie("user")
