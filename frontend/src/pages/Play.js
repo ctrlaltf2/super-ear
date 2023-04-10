@@ -8,7 +8,7 @@ import { HistoryBox } from '../components/HistoryBox';
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("waiting_for_play");
+    const [curState, setCurState] = useState("connection_error");
     const [curNote, setCurNote] = useState(null);
     const [curAcc, setCurAcc] = useState([0, 0]);
     const [history, setHistory] = useState([]);
@@ -209,7 +209,6 @@ function Play(){
         <div className = "min-h-screen bg-black">
             <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
                 {curNote}
-            </div>
             <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
                     <div className="flex-1">
                         Accuracy
@@ -238,6 +237,7 @@ function Play(){
                         </div>
                     </div>
                 </div>
+            </div>
         </div>
         );
     }
