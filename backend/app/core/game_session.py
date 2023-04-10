@@ -12,6 +12,7 @@ from typing import Callable, Any
 
 import tornado.websocket
 import tornado.escape
+import tornado.options
 from tornado.ioloop import IOLoop
 
 # python moment: https://www.stefaanlippens.net/circular-imports-type-hints-python.html
@@ -21,11 +22,26 @@ if TYPE_CHECKING:
     from app.core.dsp_session import DSPSession
 
 from app.models.user import User
+from app.models.history import ReviewHistory
+from app.models.history_event import HistoryEvent
 from app.models.track import Track
+from app.models.review_item import ReviewItem
 from app.core.srs.scheduler import OrderedReviewItem, V1
 from app.core.srs.spn import SPN
 
 logger = logging.getLogger(__name__)
+
+tornado.options.define(
+    "demo",
+    default=False,
+    help="Demo mode for the application. Disables authentication, assumes you're the demo user.",
+)
+
+tornado.options.define(
+    "assume_username",
+    default="",
+    help="Assume this username for the application. Disables authentication, assumes you're the this user.",
+)
 
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
@@ -64,11 +80,14 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     # State of the session
     _state: SessionState
 
-    # username, tbd how this is auth'd
+    # username
     _username: str = "demo"
 
-    # user object, tbd how this is auth'd
+    # user object
     _user: User | None
+
+    # history object
+    _history: ReviewHistory | None
 
     # current review queue, if there is one
     _reviewing_queue: list[OrderedReviewItem] | None
@@ -110,6 +129,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         self.dsp_session = None
         self._pair_code = None
         self._user = None
+        self._history = None
         self._reviewing_queue = None
         self._next_item = None
         self._start_time = None
@@ -119,7 +139,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         super().__init__(*args, **kwargs)
 
     # oop
-    def check_origin(self, origin):
+    def check_origin(self, _):
         return True
 
     #
@@ -165,11 +185,13 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         print(f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}")
 
         note_distance: int = abs(actual_note - expected_note)
+        due_prev = V1.get_due_date(self._user.collection, self._next_item.item)
 
         do_readd: bool = self._scheduler.review(
             self._user.collection, self._next_item.item, note_distance, 0
         )
         await self._sync_collection()  # sync
+        await self._update_history(self._next_item.item, actual_note, due_prev)
 
         if do_readd:
             random.shuffle(self._reviewing_queue)
@@ -294,6 +316,47 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self._user is not None, "pre: _user is None in sync collection"
         await self._user.save_changes()
 
+    # updates the history table with the given review item and the note played
+    async def _update_history(
+        self, item: ReviewItem, actual_note: SPN, due_date: datetime.datetime
+    ):
+        assert self._history is not None, "pre: _history is None in update history"
+
+        expected_note = SPN.from_str(item.content)
+
+        # add new list if doesn't exist
+        if str(expected_note) not in self._history.events:
+            self._history.events[str(expected_note)] = []
+
+        now = datetime.datetime.now(tz=pytz.utc)
+
+        # make a history item
+        history_event_now = HistoryEvent(
+            time=now,
+            answer=str(actual_note),
+            ease_factor=item.ease_factor,
+            review_offset=due_date - now,
+        )
+
+        # append & save
+        self._history.events[str(expected_note)].append(history_event_now)
+        await self._history.save()
+
+    # populates self._history and creates it if it doesn't exist
+    async def _init_history(self):
+        assert self._user is not None, "pre: _user is None in init history"
+        search_result = await ReviewHistory.find_one(
+            ReviewHistory.user_uuid == self._user.uuid
+        )
+
+        if search_result is None:  # create
+            self._history = ReviewHistory(user_uuid=self._user.uuid)
+            await self._history.save()
+        else:  # pull
+            self._history = search_result
+
+        assert self._history is not None, "post: _history is None"
+
     #
     ## -- tornado-related things --
     #
@@ -310,12 +373,15 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
 
-        # check auth
-        possible_username = await self.get_current_user()
+        if tornado.options.options.assume_username is not "":
+            # check auth
+            possible_username = await self.get_current_user()
 
-        if possible_username is None:
-            self.close(code=401, reason="Unauthorized")
-            return
+            if possible_username is None:
+                self.close(code=401, reason="Unauthorized")
+                return
+        else:
+            possible_username = tornado.options.options.assume_username
 
         print(f"Auth'd as {possible_username}")
 
@@ -333,8 +399,11 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         search_result = await User.find_one(User.username == self._username)
         assert (
             search_result is not None
-        ), "demo user not found, is the database bootstrapped?"
+        ), f"user '{possible_username}' not found, is the database bootstrapped?"
         self._user = search_result
+
+        # then with user setup, initialize history
+        await self._init_history()
 
         if inspect.iscoroutinefunction(self.cb_on_open):
             await self.cb_on_open(self.sock, self)
