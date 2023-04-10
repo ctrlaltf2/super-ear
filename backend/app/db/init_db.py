@@ -9,6 +9,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
 from app.models.user import User
+from app.models.history import ReviewHistory
 
 _initiated = False
 
@@ -22,7 +23,7 @@ async def init() -> None:
 
     await init_beanie(
         database=client[settings.MONGODB_DB_NAME],
-        document_models=[User],
+        document_models=[User, ReviewHistory],
     )
 
     _initiated = True

@@ -1,8 +1,10 @@
 import uuid
 
+
 from beanie import Document
 from pydantic import UUID4
 from pydantic.fields import Field
+from tornado.options import options
 
 from app.models import Collection, DefaultCollections
 
@@ -17,7 +19,9 @@ class User(Document):
     hashed_password: str = Field(..., description="The user's hashed password. bcrypt")
 
     collection: Collection = Field(
-        default_factory=lambda: DefaultCollections.get("GuitarStandard"),
+        default_factory=lambda: DefaultCollections.get(
+            "GuitarTester" if options.demo else "GuitarStandard"
+        ),
         description="The collection of the user. Future: Will support multiple.",
     )
 

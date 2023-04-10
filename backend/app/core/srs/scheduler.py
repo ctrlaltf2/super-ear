@@ -61,6 +61,30 @@ class OrderedReviewItem:
         return self.item == other.item
 
 
+# Scheduler that reviews all items for a given day. No spaced rep.
+class LinearScheduler(Scheduler):
+    @staticmethod
+    def generate_reviewing_queue(_collection: Collection) -> list[OrderedReviewItem]:
+        track = _collection.get_active_track()
+
+        return [
+            OrderedReviewItem(item, LinearScheduler.get_due_date(_collection, item))
+            for item in track.review_items
+            if LinearScheduler.get_due_date(_collection, item)
+            <= V1.get_today_start(_collection)
+        ]
+
+    @staticmethod
+    def review(
+        collection: Collection, item: ReviewItem, note_distance: int, ms_elapsed: int
+    ) -> bool:
+        pass
+
+    @staticmethod
+    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
+        pass
+
+
 # V1 of the scheduler, adapted from Anki's algorithm
 # Only accounts for note distance currently
 class V1(Scheduler):
