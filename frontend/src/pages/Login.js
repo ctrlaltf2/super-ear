@@ -26,9 +26,8 @@ function App() {
   };
 
   const handleSubmit = (event) => {
-    console.log("sub");
     console.log(uname);
-    console.log(password);
+    console.log(pass);
     //Prevent page reload
     event.preventDefault();
     // Find user login info
