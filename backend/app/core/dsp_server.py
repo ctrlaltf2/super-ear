@@ -11,7 +11,6 @@ from app.core.dsp_session import DSPSession
 
 # Main class used to listen and communicate with the DSP
 # Will listen on port 8081 by default for information being sent from the DSP module
-define("dsp-port", default=8081, help="TCP port to listen on for the DSP")
 logger = logging.getLogger(__name__)
 
 
