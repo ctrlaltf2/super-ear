@@ -31,18 +31,6 @@ from app.core.srs.spn import SPN
 
 logger = logging.getLogger(__name__)
 
-tornado.options.define(
-    "demo",
-    default=False,
-    help="Demo mode for the application. Disables authentication, assumes you're the demo user.",
-)
-
-tornado.options.define(
-    "assume_username",
-    default="",
-    help="Assume this username for the application. Disables authentication, assumes you're the this user.",
-)
-
 
 class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
     class SessionState(Enum):
