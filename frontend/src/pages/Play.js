@@ -14,6 +14,12 @@ function Play(){
     const [history, setHistory] = useState([]);
     const [counter, setCounter] = useState("00:00:00");
 
+    //function to start timer
+    function startTimer() {
+        setTimeout(updateTimer() , 1000);
+    }
+
+
     //functions for history
     function addCorrectNote(){
         setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["A"]));
@@ -131,6 +137,7 @@ function Play(){
     );
         }
     else if (curState == "string_select") {
+        startTimer();
         return(
         <div className = "min-h-screen bg-black">
             <h1 className="text-8xl text-white text-center"> Select A String</h1>
@@ -243,22 +250,127 @@ function Play(){
     }
     else if (curState == "scoring"){
         return(
-        <div className = "min-h-screen bg-black">
-            
+            <div className = "min-h-screen bg-black">
+            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
+                <Oval
+                    color="white"
+                    secondaryColor="black"
+                />
+            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
+                    <div className="flex-1">
+                        Accuracy
+                        <div className="mt-[5%]">
+                            {curAcc[0]} / {curAcc[1]}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        Time Played
+                        <div className="mt-[5%]">
+                            {counter}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        History
+                        <div className="mt-[5%]">
+                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+                        {
+                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                                return <h1>{elem}</h1>
+                            }
+                            )
+                        }
+                        </div>
+                            <HistoryBox history={history}/>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         );
     }
     else if (curState == "remediating"){
         return(
-        <div className = "min-h-screen bg-black">
-            
+            <div className = "min-h-screen bg-black">
+            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
+                <div>
+                    Incorrect! Try again. 
+                </div>
+                <Oval
+                    color="white"
+                    secondaryColor="black"
+                />
+            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
+                    <div className="flex-1">
+                        Accuracy
+                        <div className="mt-[5%]">
+                            {curAcc[0]} / {curAcc[1]}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        Time Played
+                        <div className="mt-[5%]">
+                            {counter}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        History
+                        <div className="mt-[5%]">
+                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+                        {
+                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                                return <h1>{elem}</h1>
+                            }
+                            )
+                        }
+                        </div>
+                            <HistoryBox history={history}/>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         );
     }
     else if (curState == "review_done"){
         return(
-        <div className = "min-h-screen bg-black">
-            
+            <div className = "min-h-screen bg-black">
+            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
+                <div>
+                    Review Done! Moving On.
+                </div>
+                <Oval
+                    color="white"
+                    secondaryColor="black"
+                />
+            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
+                    <div className="flex-1">
+                        Accuracy
+                        <div className="mt-[5%]">
+                            {curAcc[0]} / {curAcc[1]}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        Time Played
+                        <div className="mt-[5%]">
+                            {counter}
+                        </div>
+                    </div>
+                    <div className="flex-1">
+                        History
+                        <div className="mt-[5%]">
+                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+                        {
+                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                                return <h1>{elem}</h1>
+                            }
+                            )
+                        }
+                        </div>
+                            <HistoryBox history={history}/>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         );
     }
