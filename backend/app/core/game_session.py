@@ -7,6 +7,7 @@ import logging  # call that deforestation
 import pytz
 import random
 
+from copy import deepcopy
 from enum import Enum
 from typing import Callable, Any
 
@@ -173,13 +174,15 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         print(f"actual note: {repr(actual_note)}, expected note: {repr(expected_note)}")
 
         note_distance: int = abs(actual_note - expected_note)
-        due_prev = V1.get_due_date(self._user.collection, self._next_item.item)
+        due_prev = deepcopy(self._next_item.due_date)
 
         do_readd: bool = self._scheduler.review(
             self._user.collection, self._next_item.item, note_distance, 0
         )
         await self._sync_collection()  # sync
-        await self._update_history(self._next_item.item, actual_note, due_prev)
+        await self._update_history(
+            self._next_item.item, actual_note, due_prev, self._next_item.item.state
+        )
 
         if do_readd:
             if len(self._reviewing_queue) > 0:
@@ -306,7 +309,11 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
     # updates the history table with the given review item and the note played
     async def _update_history(
-        self, item: ReviewItem, actual_note: SPN, due_date: datetime.datetime
+        self,
+        item: ReviewItem,
+        actual_note: SPN,
+        due_date: datetime.datetime,
+        new_state: ReviewState,
     ):
         assert self._history is not None, "pre: _history is None in update history"
 
@@ -324,6 +331,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             answer=str(actual_note),
             ease_factor=item.ease_factor,
             review_offset=(due_date - now) / datetime.timedelta(hours=1),
+            state=new_state,
         )
 
         # append & save

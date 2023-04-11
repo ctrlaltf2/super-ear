@@ -5,6 +5,8 @@ import pytz
 from pydantic import BaseModel
 from pydantic.fields import Field
 
+from app.models.review_item import ReviewState
+
 
 class HistoryEvent(BaseModel):
     time: datetime.datetime = Field(
@@ -20,3 +22,5 @@ class HistoryEvent(BaseModel):
         ...,
         description="The offset from the last review in hours. This is the time between the review and the due date. negative is late.",
     )
+
+    state: ReviewState = Field(..., description="The state of the review item")
