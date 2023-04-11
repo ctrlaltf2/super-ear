@@ -16,7 +16,7 @@ class HistoryEvent(BaseModel):
 
     ease_factor: float = Field(..., description="The ease factor of the review item")
 
-    review_offset: datetime.timedelta = Field(
+    review_offset: float = Field(
         ...,
-        description="The offset from the last review. This is the time between the review and the due date. negative is late.",
+        description="The offset from the last review in hours. This is the time between the review and the due date. negative is late.",
     )
