@@ -76,10 +76,10 @@ class SPN:
         else:
             octave = str(self.octave)
 
-        return f"{self.tone_name}{octave}{self.modifier}"
+        return f"{self.tone_name}{self.modifier}{octave}"
 
     def __repr__(self):
-        return f"{self.tone_name}{self.octave}{repr(self.modifier)}"
+        return f"{self.tone_name}{self.modifier}{repr(self.octave)}"
 
     def __int__(self):
         tone_as_int = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
