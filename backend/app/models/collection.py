@@ -45,7 +45,7 @@ class Collection(BaseModel):
 
     # Maximum number of new items to study per day
     max_new_per_day: int = Field(
-        6, description="maximum number of new items to study per day", ge=0
+        20, description="maximum number of new items to study per day", ge=0
     )
 
     # Maximum number of items to study per day. # of cards, not # of reviews.
