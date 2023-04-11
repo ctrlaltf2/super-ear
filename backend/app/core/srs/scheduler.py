@@ -303,9 +303,8 @@ class V1(Scheduler):
                 if item.n_previews >= _collection.max_card_previews:
                     print("Item graduated from previewing")
                     item.state = ReviewState.Learning
-                    return False  # for now, don't put back into the learning queue.
-                else:
-                    return True
+
+                return True
 
             case ReviewState.Learning:
                 print("Item is learning")

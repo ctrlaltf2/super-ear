@@ -26,7 +26,7 @@ from app.models.user import User
 from app.models.history import ReviewHistory
 from app.models.history_event import HistoryEvent
 from app.models.track import Track
-from app.models.review_item import ReviewItem
+from app.models.review_item import ReviewItem, ReviewState
 from app.core.srs.scheduler import OrderedReviewItem, V1
 from app.core.srs.spn import SPN
 
