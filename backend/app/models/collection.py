@@ -95,3 +95,7 @@ class Collection(BaseModel):
                 raise ValueError(f"Track with name {identifier} not found")
         elif type(identifier) is int:
             self.active_track_index = identifier
+
+    def get_epoch(self) -> datetime.datetime:
+        # makes epoch into a timezone-aware object because why is it not Already
+        return self.epoch.replace(tzinfo=pytz.utc)
