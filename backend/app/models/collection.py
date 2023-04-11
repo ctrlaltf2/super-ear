@@ -40,17 +40,17 @@ class Collection(BaseModel):
 
     # -- collection settings
     max_card_previews: int = Field(
-        5, description="maximum number of times a card can be previewed", ge=0
+        3, description="maximum number of times a card can be previewed", ge=0
     )
 
     # Maximum number of new items to study per day
     max_new_per_day: int = Field(
-        5, description="maximum number of new items to study per day", ge=0
+        6, description="maximum number of new items to study per day", ge=0
     )
 
     # Maximum number of items to study per day. # of cards, not # of reviews.
     max_reviews_per_day: int = Field(
-        75, description="maximum number of items to study per day", ge=0
+        100, description="maximum number of items to study per day", ge=0
     )
 
     # If should mix review and new items together
