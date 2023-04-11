@@ -19,7 +19,7 @@ function Login() {
     const signIn = new FormData();
     signIn.append('username', uname);
     signIn.append('password', pass);
-    fetch('http://localhost:8000/auth/login', {
+    fetch('http://172.81.131.131:8000/auth/login', {
       method: 'POST',
       mode: 'cors',
       body: signIn})
