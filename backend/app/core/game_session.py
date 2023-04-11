@@ -323,7 +323,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             time=now,
             answer=str(actual_note),
             ease_factor=item.ease_factor,
-            review_offset=due_date - now,
+            review_offset=(due_date - now) / datetime.timedelta(hours=1),
         )
 
         # append & save
