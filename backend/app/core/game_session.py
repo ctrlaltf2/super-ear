@@ -182,8 +182,6 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         await self._update_history(self._next_item.item, actual_note, due_prev)
 
         if do_readd:
-            random.shuffle(self._reviewing_queue)
-
             if len(self._reviewing_queue) > 0:
                 # then insert in a random place that's not at the start- minimize repeats
                 self._reviewing_queue.insert(
@@ -191,6 +189,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
                 )
             else:  # just insert at the start
                 self._reviewing_queue.insert(0, self._next_item)
+
+        print(" ".join([str(item.item.content) for item in self._reviewing_queue]))
 
         self.send_frontend_message("note played", repr(actual_note))
         await self._try_send_next_review()
@@ -217,7 +217,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             await self._set_state(self.SessionState.REVIEW_DONE)
             return
 
-        self._next_item = self._reviewing_queue[0]
+        self._next_item = self._reviewing_queue.pop(0)
 
         # send to DSP the frequeny
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
