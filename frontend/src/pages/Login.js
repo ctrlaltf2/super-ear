@@ -11,8 +11,6 @@ function Login() {
 
   const handleSubmit = (event) => 
   {
-    console.log(uname);
-    console.log(pass);
     //Prevent page reload
     event.preventDefault();
     //Send to websocket
