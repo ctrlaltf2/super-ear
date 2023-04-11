@@ -361,7 +361,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         assert self.ws_connection.stream is not None
         assert self.ws_connection.stream.socket is not None
 
-        if tornado.options.options.assume_username is not "":
+        if not tornado.options.options.demo:
             # check auth
             possible_username = await self.get_current_user()
 
@@ -369,7 +369,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
                 self.close(code=401, reason="Unauthorized")
                 return
         else:
-            possible_username = tornado.options.options.assume_username
+            possible_username = "demo"
 
         print(f"Auth'd as {possible_username}")
 
