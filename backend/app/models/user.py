@@ -13,7 +13,7 @@ class User(Document):
     uuid: UUID4 = Field(default_factory=uuid.uuid4, description="The user's UUID")
 
     username: str = Field(
-        ..., description="The user's username", max_length=32, min_length=4
+        ..., description="The user's username", max_length=32, min_length=3
     )
 
     hashed_password: str = Field(..., description="The user's hashed password. bcrypt")
