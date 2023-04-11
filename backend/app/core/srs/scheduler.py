@@ -235,7 +235,7 @@ class V1(Scheduler):
         _collection: Collection, _item: ReviewItem
     ) -> datetime.datetime | None:
         if _item.last_review is not None:
-            return _collection.epoch + datetime.timedelta(days=_item.last_review)
+            return _collection.get_epoch() + datetime.timedelta(days=_item.last_review)
         else:
             return None
 
@@ -269,8 +269,10 @@ class V1(Scheduler):
 
         # update review time
         if item.state != ReviewState.Unseen:
-            diff = V1.get_today_start(_collection).date() - _collection.epoch.date()
-            item.last_review = diff.days
+            diff = (
+                V1.get_today_start(_collection) - _collection.get_epoch()
+            ) / datetime.timedelta(days=1)
+
 
         match item.state:
             case ReviewState.Unseen:
