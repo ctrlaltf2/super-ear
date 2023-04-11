@@ -40,17 +40,17 @@ class Collection(BaseModel):
 
     # -- collection settings
     max_card_previews: int = Field(
-        5, description="maximum number of times a card can be previewed", ge=0
+        3, description="maximum number of times a card can be previewed", ge=0
     )
 
     # Maximum number of new items to study per day
     max_new_per_day: int = Field(
-        5, description="maximum number of new items to study per day", ge=0
+        20, description="maximum number of new items to study per day", ge=0
     )
 
     # Maximum number of items to study per day. # of cards, not # of reviews.
     max_reviews_per_day: int = Field(
-        75, description="maximum number of items to study per day", ge=0
+        100, description="maximum number of items to study per day", ge=0
     )
 
     # If should mix review and new items together
@@ -95,3 +95,7 @@ class Collection(BaseModel):
                 raise ValueError(f"Track with name {identifier} not found")
         elif type(identifier) is int:
             self.active_track_index = identifier
+
+    def get_epoch(self) -> datetime.datetime:
+        # makes epoch into a timezone-aware object because why is it not Already
+        return self.epoch.replace(tzinfo=pytz.utc)

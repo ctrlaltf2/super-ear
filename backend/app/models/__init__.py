@@ -54,11 +54,25 @@ class DefaultCollections:
         ]
     )
 
+    _GuitarTester = Collection(
+        tracks=[
+            Track.from_list(
+                [
+                    ReviewItem(content=repr(SPN.from_str("A3") + offset))
+                    for offset in range(0, 12 + 1)
+                ],
+                "Test string",
+            ),
+        ]
+    )
+
     @staticmethod
     def get(name: str):
         from copy import deepcopy
 
         if name == "GuitarStandard":
             return deepcopy(DefaultCollections._GuitarStandard)
+        elif name == "GuitarTester":
+            return deepcopy(DefaultCollections._GuitarTester)
 
         raise ValueError(f"Collection {name} not found.")

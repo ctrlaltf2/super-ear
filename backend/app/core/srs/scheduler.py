@@ -6,6 +6,7 @@ import pytz
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from math import floor
 from typing import Any, Optional
 
 from app.models.collection import Collection
@@ -59,6 +60,30 @@ class OrderedReviewItem:
 
     def __eq__(self, other):
         return self.item == other.item
+
+
+# Scheduler that reviews all items for a given day. No spaced rep.
+class LinearScheduler(Scheduler):
+    @staticmethod
+    def generate_reviewing_queue(_collection: Collection) -> list[OrderedReviewItem]:
+        track = _collection.get_active_track()
+
+        return [
+            OrderedReviewItem(item, LinearScheduler.get_due_date(_collection, item))
+            for item in track.review_items
+            if LinearScheduler.get_due_date(_collection, item)
+            <= V1.get_today_start(_collection)
+        ]
+
+    @staticmethod
+    def review(
+        collection: Collection, item: ReviewItem, note_distance: int, ms_elapsed: int
+    ) -> bool:
+        pass
+
+    @staticmethod
+    def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
+        pass
 
 
 # V1 of the scheduler, adapted from Anki's algorithm
@@ -197,7 +222,7 @@ class V1(Scheduler):
     @staticmethod
     def get_due_date(_collection: Collection, _item: ReviewItem) -> datetime.datetime:
         if _item.last_review is not None:  # triggers for learning and reviewing items
-            last_review_date = _collection.epoch + datetime.timedelta(
+            last_review_date = _collection.get_epoch() + datetime.timedelta(
                 days=_item.last_review
             )
 
@@ -211,7 +236,7 @@ class V1(Scheduler):
         _collection: Collection, _item: ReviewItem
     ) -> datetime.datetime | None:
         if _item.last_review is not None:
-            return _collection.epoch + datetime.timedelta(days=_item.last_review)
+            return _collection.get_epoch() + datetime.timedelta(days=_item.last_review)
         else:
             return None
 
@@ -243,10 +268,19 @@ class V1(Scheduler):
         err = float(note_distance)
         err = max(0, min(5, err))  # clamp note distance to 0-5
 
+        # Map correctness into SM-2's interpretation of correctness
+        if err > 0.001:  # mark as incorrect- [3,4,5]
+            err = V1._map_range(err, (1.0, 5.0), (3.0, 5.0))
+
+        q = 5 - err
+
         # update review time
         if item.state != ReviewState.Unseen:
-            diff = V1.get_today_start(_collection).date() - _collection.epoch.date()
-            item.last_review = diff.days
+            diff = (
+                V1.get_today_start(_collection) - _collection.get_epoch()
+            ) / datetime.timedelta(days=1)
+
+            item.last_review = floor(diff)
 
         match item.state:
             case ReviewState.Unseen:
@@ -269,9 +303,8 @@ class V1(Scheduler):
                 if item.n_previews >= _collection.max_card_previews:
                     print("Item graduated from previewing")
                     item.state = ReviewState.Learning
-                    return False  # for now, don't put back into the learning queue.
-                else:
-                    return True
+
+                return True
 
             case ReviewState.Learning:
                 print("Item is learning")
@@ -292,23 +325,20 @@ class V1(Scheduler):
                         item.current_interval = datetime.timedelta(
                             minutes=item.learning_steps[-1]
                         ) / datetime.timedelta(days=1)
+
+                        return False  # graduated -> don't readd
                     else:  # move to next learning step
                         print("Item moved to next learning step")
                         item.learning_index += 1
+                        return False
                 else:  # reset learning step
                     print("Item reset to first learning step")
                     item.learning_index = 0
-
-                return (err - 5) < 4
+                    return True
 
             case ReviewState.Reviewing:
                 print("Item is reviewing")
-                # Map correctness into SM-2's interpretation of correctness
-                if err > 0.001:  # mark as incorrect- [3,4,5]
-                    err = V1._map_range(err, (1.0, 5.0), (3.0, 5.0))
 
-                # quality response (0-5)
-                q = 5 - err
                 print(f"SM-2 quality of {q}")
 
                 # step 6 of SM-2
@@ -330,7 +360,11 @@ class V1(Scheduler):
                     item.ease_factor + (0.1 - err * (0.08 + err * 0.02)),
                 )
 
+                print(f"Should readd = {q < 4}")
+
                 return q < 4
+
+        assert False, f"code should be unreachable; came from state {item.state}"
 
     @staticmethod
     def _calculate_interval(_item: ReviewItem) -> datetime.timedelta:
@@ -345,7 +379,7 @@ class V1(Scheduler):
                 return V1._reviewing_interval(_item)
 
     @staticmethod
-    def _unseen_interval(_item: ReviewItem, mx=8) -> datetime.timedelta:
+    def _unseen_interval(_: ReviewItem, mx=8) -> datetime.timedelta:
         # Add a random number of seconds to add some jitter to the due date for unseen items
         return datetime.timedelta(seconds=random.random() * 2 * mx - mx)
 
