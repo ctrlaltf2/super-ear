@@ -66,7 +66,7 @@ function Play(){
     //component lifecycle (ws connection/disconnection)
     const ws = useRef();
     if (!ws.current) {
-      ws.current = new WebSocket('ws://172.81.131.131:8000/game_session');
+      ws.current = new WebSocket('ws://localhost:8000/game_session');
     }
 
     useEffect(() => {

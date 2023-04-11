@@ -1,52 +1,39 @@
-import React, { useState } from "react";
-import ReactDOM from "react-dom";
+import React from "react";
+import {useState, useRef, useEffect } from 'react';
+import {Oval} from 'react-loader-spinner';
 
-function App() {
+function Login() {
   // React States
   const [uname, setUname] = useState();
   const [pass, setPass] = useState();
   const [errorMessages, setErrorMessages] = useState({});
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // User Login info
-  const database = [
-    {
-      username: "user1",
-      password: "pass1"
-    },
-    {
-      username: "user2",
-      password: "pass2"
-    }
-  ];
-
-  const errors = {
-    uname: "invalid username",
-    pass: "invalid password"
-  };
-
-  const handleSubmit = (event) => {
+  const handleSubmit = (event) => 
+  {
     console.log(uname);
     console.log(pass);
     //Prevent page reload
     event.preventDefault();
-    // Find user login info
-    const userData = database.find((user) => user.username === uname);
-
-    // Compare user info
-    if (userData) {
-      if (userData.password !== pass) {
-        // Invalid password
-        setErrorMessages({ name: "pass", message: errors.pass });
-      } else {
-        setIsSubmitted(true);
-      }
-    } else {
-      // Username not found
-      setErrorMessages({ name: "uname", message: errors.uname });
-    }
-  };
-
+    //Send to websocket
+    const signIn = new FormData();
+    signIn.append('username', uname);
+    signIn.append('password', pass);
+    fetch('http://localhost:8000/auth/login', {
+      method: 'POST',
+      mode: 'cors',
+      body: signIn})
+      .then(response => {
+        if (response.ok) 
+        {
+          setIsSubmitted(true);
+        }
+        else 
+        {
+          setErrorMessages({name: "pass", message: "login unsuccessful"});
+        }
+      })
+      };
   // Generate JSX code for error message
   const renderErrorMessage = (name) =>
     name === errorMessages.name && (
@@ -98,4 +85,4 @@ function App() {
 
 }
 
-export default App;
+export default Login;
