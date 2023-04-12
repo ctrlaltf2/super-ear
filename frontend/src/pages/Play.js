@@ -4,21 +4,19 @@ import {Oval} from 'react-loader-spinner';
 import fretboard from '../components/pics/fretboard-notes.png';
 import { FretMatrix } from '../components/FretMatrix';
 import { HistoryBox } from '../components/HistoryBox';
-
+import { FretPlayCheck } from "../components/fretPlayCheck";
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("connection_error");
+    const [curState, setCurState] = useState("waiting_for_play");
     const [curNote, setCurNote] = useState(null);
     const [curAcc, setCurAcc] = useState([0, 0]);
+    const [correct, setCorrect] = useState("Correct!");
     const [history, setHistory] = useState([]);
     const [counter, setCounter] = useState("00:00:00");
-
-    //function to start timer
-    function startTimer() {
-        setTimeout(updateTimer() , 1000);
-    }
-
+    const [stringNum, setStringNum] = useState(0);
+    const [playedNote, setPlayedNote] = useState("A");
+    const [expectedNote, setExpectedNote] = useState("G#");
 
     //functions for history
     function addCorrectNote(){
@@ -27,12 +25,14 @@ function Play(){
         newAcc[0] += 1;
         newAcc[1] += 1
         setCurAcc(newAcc);
+        setCorrect = "Correct!"
     };
     function addIncorrectNote(){
         setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["B"]));
         const newAcc = curAcc.slice();
         newAcc[1] += 1
         setCurAcc(newAcc);
+        setCorrect = "Incorrect, Keep Trying!"
     };
 
     //clock functions    
@@ -67,7 +67,7 @@ function Play(){
     }
     useEffect(() =>{
             setTimeout(() => updateTimer(), 1000);
-    }, [counter])
+    }, [counter] )
 
     //component lifecycle (ws connection/disconnection)
     const ws = useRef();
@@ -110,12 +110,67 @@ function Play(){
 
     
     function stringSelector(string){
+        setStringNum(string);
+        setCounter("00:00:00");
         const message = JSON.stringify({
             "type": "string_select",
             "payload": string,
         });
         ws.current.send(message);
     }
+
+
+    const gameStats = (
+        <div className="grid grid-cols-3 w-full justify-center items-center text-center opacity-70">
+        {/*History */}
+        <div>
+            <div className="text-white text-lg font-bold text-center">
+                History
+            </div>
+            <div className="mt-[4%]">
+            <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+            {
+                ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                    return <h1>{elem}</h1>
+                }
+                )
+            }
+            </div>
+                <HistoryBox history={history}/>
+            </div>
+        </div>
+        {/*Accuracy and session time */}
+        <div className="grid grid-cols-2 h-full justify-center items-center text-center text-gray-200 text-sm font-md">
+            <div>
+                Accuracy
+                <div className="mt-[5%]">
+                    {curAcc[0]} / {curAcc[1]}
+                </div>
+            </div>
+            <div>
+                Time Played
+                <div className="mt-[5%]">
+                    {counter}
+                </div>
+            </div>
+        </div>
+        {/**Fret Board */}
+        {/*img*/}
+        <div className="relative">
+            <img className="w-full h-auto z-0"
+                src={fretboard} 
+                alt="fretboard">
+            </img>
+            <FretPlayCheck 
+                stringNum = {stringNum}
+                expectedNote = {expectedNote}
+                playedNote = {playedNote}
+            />
+        </div>
+    </div>
+    );
+
+
 
 
     //Running
@@ -137,7 +192,6 @@ function Play(){
     );
         }
     else if (curState == "string_select") {
-        startTimer();
         return(
         <div className = "min-h-screen bg-black">
             <h1 className="text-8xl text-white text-center"> Select A String</h1>
@@ -173,214 +227,133 @@ function Play(){
     }
     else if (curState == "scheduling"){
         return(
-        <div className = "min-h-screen bg-black">
-                <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
-                    <Oval
-                        color="white"
-                        secondaryColor="black"
-                    />
-                    <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
-                    <div className="flex-1">
-                        Accuracy
-                        <div className="mt-[5%]">
-                            {curAcc[0]} / {curAcc[1]}
+                <div className = "min-h-screen grid grid-rows-2 bg-black justify-center items-center">
+                    {/*game state and last note info*/}                    
+                    <div className="grid grid-rows-3 items-center justify-center text-center w-[50%] ml-[25%]">
+                        <div className="text-gray-200 text-8xl">
+                            {correct}
+                        </div>
+                        <div className="text-gray-200 text-2xl grid grid-cols-2 items-center justify-center text-center">
+                            <div>
+                                Note Played: {playedNote}
+                            </div>
+                            <div>
+                                Note Expected: {expectedNote}
+                            </div>
+                        </div>
+                        <div className="text-lg text-gray-200 opacity-90 text-center items-center justify-center">
+                            Scheduling Next Note...
                         </div>
                     </div>
-                    <div className="flex-1">
-                        Time Played
-                        <div className="mt-[5%]">
-                            {counter}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        History
-                        <div className="mt-[5%]">
-                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
-                        {
-                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
-                                return <h1>{elem}</h1>
-                            }
-                            )
-                        }
-                        </div>
-                            <HistoryBox history={history}/>
-                        </div>
-                    </div>
+                    {gameStats}
                 </div>
-                </div>
-            </div>
         );
     }
     else if (curState == "waiting_for_play"){
         return(
-        <div className = "min-h-screen bg-black">
-            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
-                {curNote}
-            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
-                    <div className="flex-1">
-                        Accuracy
-                        <div className="mt-[5%]">
-                            {curAcc[0]} / {curAcc[1]}
+            <div className = "min-h-screen grid grid-rows-2 bg-black justify-center items-center">
+                    {/*game state and last note info*/}                    
+                    <div className="grid grid-rows-3 items-center justify-center text-center w-[50%] ml-[25%]">
+                        <div className="text-gray-200 text-8xl">
+                            {correct}
+                        </div>
+                        <div className="text-gray-200 text-2xl grid grid-cols-2 items-center justify-center text-center">
+                            <div>
+                                Note Played: {playedNote}
+                            </div>
+                            <div>
+                                Note Expected: {expectedNote}
+                            </div>
+                        </div>
+                        <div className="text-lg text-gray-200 opacity-90 text-center">
+                            Play The Note You Heard
                         </div>
                     </div>
-                    <div className="flex-1">
-                        Time Played
-                        <div className="mt-[5%]">
-                            {counter}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        History
-                        <div className="mt-[5%]">
-                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
-                        {
-                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
-                                return <h1>{elem}</h1>
-                            }
-                            )
-                        }
-                        </div>
-                            <HistoryBox history={history}/>
-                        </div>
-                    </div>
+                    {gameStats}
                 </div>
-            </div>
-        </div>
         );
     }
     else if (curState == "scoring"){
         return(
-            <div className = "min-h-screen bg-black">
-            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
-                <Oval
-                    color="white"
-                    secondaryColor="black"
-                />
-            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
-                    <div className="flex-1">
-                        Accuracy
-                        <div className="mt-[5%]">
-                            {curAcc[0]} / {curAcc[1]}
+                <div className = "min-h-screen grid grid-rows-2 bg-black justify-center items-center">
+                    {/*game state and last note info*/}                    
+                    <div className="grid grid-rows-3 items-center justify-center text-center w-[50%] ml-[25%]">
+                        <div className="text-gray-200 text-8xl">
+                            {correct}
+                        </div>
+                        <div className="text-gray-200 text-2xl grid grid-cols-2 items-center justify-center text-center">
+                            <div>
+                                Note Played: {playedNote}
+                            </div>
+                            <div>
+                                Note Expected: {expectedNote}
+                            </div>
+                        </div>
+                        <div className="text-lg text-gray-200 opacity-90 text-center">
+                            Scoring...
+                            <Oval
+                            color="white"
+                            secondaryColor="black"
+                            />
                         </div>
                     </div>
-                    <div className="flex-1">
-                        Time Played
-                        <div className="mt-[5%]">
-                            {counter}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        History
-                        <div className="mt-[5%]">
-                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
-                        {
-                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
-                                return <h1>{elem}</h1>
-                            }
-                            )
-                        }
-                        </div>
-                            <HistoryBox history={history}/>
-                        </div>
-                    </div>
+                    {gameStats}
                 </div>
-            </div>
-        </div>
         );
     }
     else if (curState == "remediating"){
         return(
-            <div className = "min-h-screen bg-black">
-            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
-                <div>
-                    Incorrect! Try again. 
+                <div className = "min-h-screen grid grid-rows-2 bg-black justify-center items-center">
+                    {/*game state and last note info*/}                    
+                    <div className="grid grid-rows-3 items-center justify-center text-center w-[50%] ml-[25%]">
+                        <div className="text-gray-200 text-8xl">
+                            {correct}
+                        </div>
+                        <div className="text-gray-200 text-2xl grid grid-cols-2 items-center justify-center text-center">
+                            <div>
+                                Note Played: {playedNote}
+                            </div>
+                            <div>
+                                Note Expected: {expectedNote}
+                            </div>
+                        </div>
+                        <div className="text-lg text-gray-200 opacity-90 text-center">
+                            Play The Note You Heard
+                        </div>
+                    </div>
+                    {gameStats}
                 </div>
-                <Oval
-                    color="white"
-                    secondaryColor="black"
-                />
-            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
-                    <div className="flex-1">
-                        Accuracy
-                        <div className="mt-[5%]">
-                            {curAcc[0]} / {curAcc[1]}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        Time Played
-                        <div className="mt-[5%]">
-                            {counter}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        History
-                        <div className="mt-[5%]">
-                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
-                        {
-                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
-                                return <h1>{elem}</h1>
-                            }
-                            )
-                        }
-                        </div>
-                            <HistoryBox history={history}/>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         );
     }
     else if (curState == "review_done"){
         return(
-            <div className = "min-h-screen bg-black">
-            <div className = "flex flex-col min-h-screen justify-center items-center text-8xl text-white">
-                <div>
-                    Review Done! Moving On.
+                <div className = "min-h-screen grid grid-rows-2 bg-black justify-center items-center">
+                    {/*game state and last note info*/}                    
+                    <div className="grid grid-rows-3 items-center justify-center text-center w-[50%] ml-[25%]">
+                        <div className="text-gray-200 text-8xl">
+                            {correct}
+                        </div>
+                        <div className="text-gray-200 text-2xl grid grid-cols-2 items-center justify-center text-center">
+                            <div>
+                                Note Played: {playedNote}
+                            </div>
+                            <div>
+                                Note Expected: {expectedNote}
+                            </div>
+                        </div>
+                        <div className="text-lg text-gray-200 opacity-90 text-center">
+                            Review Done!
+                        </div>
+                    </div>
+                    {gameStats}
                 </div>
-                <Oval
-                    color="white"
-                    secondaryColor="black"
-                />
-            <div className="flex flex-row justify-center items-center text-center pt-[5%] text-4xl w-full text-white opacity-70">
-                    <div className="flex-1">
-                        Accuracy
-                        <div className="mt-[5%]">
-                            {curAcc[0]} / {curAcc[1]}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        Time Played
-                        <div className="mt-[5%]">
-                            {counter}
-                        </div>
-                    </div>
-                    <div className="flex-1">
-                        History
-                        <div className="mt-[5%]">
-                        <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
-                        {
-                            ["Time Played", "Played Note", "Expected Note"].map((elem) => {
-                                return <h1>{elem}</h1>
-                            }
-                            )
-                        }
-                        </div>
-                            <HistoryBox history={history}/>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
         );
     }
     else if (curState == "connection_error"){
         return(
-        <div className = "min-h-screen bg-black">
-            <div className = "flex min-h-screen justify-center items-center text-8xl text-white">
-                Can't Connect to Websocket, Please Reload
+            <div className = "min-h-screen grid bg-black justify-center items-center text-8xl text-white text-center">
+                Can't Connect To Websocket. Refresh The Page.
             </div>
-        </div>
         );  
     }
 };
