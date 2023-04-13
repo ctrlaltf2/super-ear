@@ -195,7 +195,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         print(" ".join([str(item.item.content) for item in self._reviewing_queue]))
 
-        self.send_frontend_message("note played", repr(actual_note))
+        to_send = {"expected": repr(expected_note), "played": repr(actual_note)}
+
+        self.send_frontend_message("note played", to_send)
         await self._try_send_next_review()
 
     async def _init_scheduling(self):
@@ -226,6 +228,10 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
 
         self._send_to_dsp(f"play {expected_freq}")
+        self.send_frontend_message(
+            "should play", repr(SPN.from_str(self._next_item.item.content))
+        )
+
         await self._set_state(self.SessionState.WAITING_FOR_PLAY)
 
     # Called when the user selects a string to study
