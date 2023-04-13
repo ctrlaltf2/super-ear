@@ -14,62 +14,40 @@ function Play(){
     const [curAcc, setCurAcc] = useState([0, 0]);
     const [correct, setCorrect] = useState("");
     const [history, setHistory] = useState([]);
-    const [counter, setCounter] = useState("00:00:00");
     const [stringNum, setStringNum] = useState();
     const [playedNote, setPlayedNote] = useState(null);
     const [expectedNote, setExpectedNote] = useState(null);
 
     //functions for history
-    function addCorrectNote(){
-        setHistory(prevHistory => prevHistory.concat([counter], [playedNote], [expectedNote]));
-        const newAcc = curAcc.slice();
-        newAcc[0] += 1;
-        newAcc[1] += 1
+    function addCorrectNote(en, pn)
+    {
+        setHistory(prevHistory => prevHistory.concat([pn], [en]));
+        const newAcc = curAcc.map((a, i) =>
+        {
+            if (i === 0) {
+                return a + 1;
+            }
+            if (i === 1){
+                return a + 1;
+            }
+        });
         setCurAcc(newAcc);
         setCorrect("Correct!");
     };
-    function addIncorrectNote(){
-        setHistory(prevHistory => prevHistory.concat([counter], [playedNote], [expectedNote]));
-        const newAcc = curAcc.slice();
-        newAcc[1] += 1
-        setCurAcc(newAcc);
+    function addIncorrectNote(en, pn)
+    {
+        setHistory(prevHistory => prevHistory.concat([pn], [en]));
+        const newAcc = curAcc.map((a, i) =>
+        {
+            if (i === 0) {
+                return a;
+            }
+            if (i === 1){
+                return a + 1;
+            }
+        });
         setCorrect("Incorrect, Keep Trying!");
-    };
-
-    //clock functions    
-    function updateTimer(){
-        let secs = 1 + parseInt(counter.slice(-2));
-        let minutes = parseInt(counter.slice(3,5)); 
-        let hours = parseInt(counter.slice(0, 2));
-        if (secs >= 60){
-            secs = 0;
-            minutes += 1;
-        }
-        if (minutes >= 60){
-            minutes = 0;
-            hours += 1;
-        }
-        if (hours >= 99){
-            hours = 0;
-        }
-        secs = secs.toString();
-        if (secs.length == 1){
-            secs = "0" + secs;
-        }
-        minutes = minutes.toString();
-        if (minutes.length == 1){
-            minutes = "0" + minutes;
-        }
-        hours = hours.toString();
-        if (hours.length == 1){
-            hours = "0" + hours;
-        }
-        setCounter(hours + ":" + minutes + ":" + secs)
-    }
-    useEffect(() =>{
-            setTimeout(() => updateTimer(), 1000);
-    }, [counter] )
-
+    };  
     //component lifecycle (ws connection/disconnection)
     const ws = useRef();
     if (!ws.current) {
@@ -117,34 +95,31 @@ function Play(){
                 if ((json.event = "data")) {
                     console.log(json["type"])
                     console.log(json["payload"])
-
                     if (json["type"] === "state") {
                         setCurState(json["payload"]);
-                        // setExpectedNote(null);
                     } else if (json["type"] === "note played"){
-                        console.log("note played message")
-
                         let EN = json["payload"]["expected"];
-                        console.log("Expected before: ", EN);
-
                         EN = EN.substring(0, EN.length - 1);
-
-                        console.log("Expected after: ", EN);
-
-                        let PN = json["payload"]["expected"];
+                        let PN = json["payload"]["played"];
                         PN = PN.substring(0, PN.length - 1);
-                        console.log(EN, PN);
-                        setExpectedNote(EN)
-                        setPlayedNote(PN)
-                        if (EN == PN){
-                            addCorrectNote()
+                        setExpectedNote(EN);
+                        console.log("expected in note played: ", EN);
+                        setPlayedNote(PN);
+                        console.log("Played in note played: ", PN);
+                        if (EN !== null && PN !== null){
+                            if(EN === PN){
+                                addCorrectNote(EN, PN);
+                            }
+                            else{
+                                addIncorrectNote(EN, PN);
+                            }
                         }
-                        else{
-                            addIncorrectNote()
-                        }
+
                     } else if(json["type"] === "should play") {
                         try { // why aren't exceptions documented
-                            sampler.triggerAttackRelease(json["payload"], "2n", "+0.1");
+                            setTimeout(() => {
+                                sampler.triggerAttackRelease(json["payload"], "2n", "+0.1");
+                            }, 1000);
                         } catch(err) {
                             console.warn("Error playing note: ", err);
                         }
@@ -162,7 +137,6 @@ function Play(){
     
     function stringSelector(string){
         setStringNum(string);
-        setCounter("00:00:00");
         const message = JSON.stringify({
             "type": "string_select",
             "payload": string,
@@ -176,12 +150,12 @@ function Play(){
         {/*History */}
         <div>
             <div className="text-white text-lg font-bold text-center">
-                History
+                Session History
             </div>
             <div className="mt-[4%]">
-            <div className = "grid grid-cols-3 text-center text-gray-200 text-sm font-light mb-1">
+            <div className = "grid grid-cols-2 text-center text-gray-200 text-sm font-light mb-1">
             {
-                ["Time Played", "Played Note", "Expected Note"].map((elem) => {
+                ["Played Note", "Expected Note"].map((elem) => {
                     return <h1>{elem}</h1>
                 }
                 )
@@ -191,19 +165,13 @@ function Play(){
             </div>
         </div>
         {/*Accuracy and session time */}
-        <div className="grid grid-cols-2 h-full justify-center items-center text-center text-gray-200 text-sm font-md">
-            <div>
+        <div className="grid grid-cols-1 h-full justify-center items-center text-center text-gray-200 text-sm font-md">
+            <div className="text-white text-lg font-bold text-center">
                 Accuracy
+            </div>
                 <div className="mt-[5%]">
                     {curAcc[0]} / {curAcc[1]}
                 </div>
-            </div>
-            <div>
-                Time Played
-                <div className="mt-[5%]">
-                    {counter}
-                </div>
-            </div>
         </div>
         {/**Fret Board */}
         {/*img*/}

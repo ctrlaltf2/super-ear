@@ -1,5 +1,4 @@
 export const FretPlayCheck = (props) => {
-    console.log(props);
     const color = ["bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600"];
     const opacity = ["opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0"];
     const offset = stringNumToOffset();
