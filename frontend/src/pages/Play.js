@@ -150,11 +150,11 @@ function Play(){
             </div>
         </div>
         {/*Accuracy and session time */}
-        <div className="grid grid-cols-1 h-full justify-center items-center text-center text-gray-200 text-sm font-md">
+        <div className="grid grid-cols-1 h-full justify-center items-center text-center font-md">
             <div className="text-white text-lg font-bold text-center">
                 Accuracy
             </div>
-                <div className="mt-[5%]">
+                <div className="mt-[5%] text-md font-medium">
                     {curCor} / {curTot}
                 </div>
         </div>
