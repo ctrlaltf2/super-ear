@@ -24,6 +24,13 @@ from app.core.srs.spn import SPN
 logger = logging.getLogger(__name__)
 
 
+class CORSMakesMeSad(StaticFileHandler):
+    def set_default_headers(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        self.set_header("Access-Control-Allow-Headers", "x-requested-with")
+        self.set_header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+
+
 # Responsible for managing the lifecycle of DSP sessions and game sessions, and pairing management
 class SuperEarApplication(tornado.web.Application):
     # TCP server used for DSP
@@ -164,7 +171,7 @@ class SuperEarApplication(tornado.web.Application):
                 (r"/auth/logout", AuthLogoutHandler),
                 (
                     r"/(.*)",
-                    StaticFileHandler,
+                    CORSMakesMeSad,
                     {"path": "/super-ear/srv", "default_filename": "index.html"},
                 ),  # TODO: basic login handler here on the static side, sets a cookie. Cookie used in GameSessionSocketHandler
             ],

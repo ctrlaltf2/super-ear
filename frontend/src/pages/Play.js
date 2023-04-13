@@ -4,10 +4,12 @@ import {Oval} from 'react-loader-spinner';
 import fretboard from '../components/pics/fretboard-notes.png';
 import { HistoryBox } from '../components/HistoryBox';
 import { FretPlayCheck } from "../components/fretPlayCheck";
+import * as Tone from 'tone'
+
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("connection_error");
+    const [curState, setCurState] = useState("waiting_for_dsp");
     const [curNote, setCurNote] = useState(null);
     const [curAcc, setCurAcc] = useState([0, 0]);
     const [correct, setCorrect] = useState("");
@@ -75,6 +77,35 @@ function Play(){
     }
 
     useEffect(() => {
+        //create a synth and connect it to the main output (your speakers)
+        const synth = new Tone.PolySynth().toDestination();
+
+        const sampler = new Tone.Sampler({
+            urls: {
+                "F#1": "F%231.mp3",
+                "C2": "C2.mp3",
+                "F#2": "F%232.mp3",
+                "C3": "C3.mp3",
+                "F#3": "F%233.mp3",
+                "A3": "A3.mp3",
+                "C4": "C4.mp3",
+                "F#4": "F%234.mp3",
+                "C5": "C5.mp3",
+                "C6": "C6.mp3",
+            },
+            release: 1,
+            // baseUrl: `${window.location.origin}/guitar/`,
+            baseUrl: `http://172.81.131.131:8000/guitar/`,
+        }).toDestination();
+
+        Tone.loaded().then(() => {
+            console.log("loaded sampler");
+        });
+
+        //play a middle 'C' for the duration of an 8th note
+        // synth.triggerAttackRelease("C4", "2n", "+0.3");
+
+        // catch all
 
         ws.current.onopen = () => {
           console.log('connected')
@@ -86,12 +117,11 @@ function Play(){
                 if ((json.event = "data")) {
                     console.log(json["type"])
                     console.log(json["payload"])
-                    
-                    if (json["type"] == "state") {
+
+                    if (json["type"] === "state") {
                         setCurState(json["payload"]);
                         setExpectedNote(null);
-                    }
-                    else if (json["type"] == "note played"){
+                    } else if (json["type"] == "note played"){
                         let EN = json["payload"]["expected"];
                         EN = EN.substring(0, EN.length - 1);
                         let PN = json["payload"]["expected"];
@@ -104,7 +134,13 @@ function Play(){
                         else{
                             addIncorrectNote()
                         }
-                    }   
+                    } else if(json["type"] === "should play") {
+                        try { // why aren't exceptions documented
+                            sampler.triggerAttackRelease(json["payload"], "2n", "+0.1");
+                        } catch(err) {
+                            console.warn("Error playing note: ", err);
+                        }
+                    }
                 }
             } catch (err) {
                 setCurState("connection_error");

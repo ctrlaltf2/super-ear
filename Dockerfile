@@ -28,6 +28,7 @@ RUN pip3 install -r requirements.txt
 
 COPY ./backend /code
 COPY --from=node /code/build /super-ear/srv
+COPY ./assets /super-ear/srv/
 COPY --from=node /code/wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh
 RUN apk add --no-cache bash
