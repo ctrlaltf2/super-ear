@@ -20,7 +20,7 @@ function Play(){
 
     //functions for history
     function addCorrectNote(){
-        setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["A"]));
+        setHistory(prevHistory => prevHistory.concat([counter], [playedNote], [expectedNote]));
         const newAcc = curAcc.slice();
         newAcc[0] += 1;
         newAcc[1] += 1
@@ -28,7 +28,7 @@ function Play(){
         setCorrect = "Correct!"
     };
     function addIncorrectNote(){
-        setHistory(prevHistory => prevHistory.concat(["00:00:00"], ["A"], ["B"]));
+        setHistory(prevHistory => prevHistory.concat([counter], [playedNote], [expectedNote]));
         const newAcc = curAcc.slice();
         newAcc[1] += 1
         setCurAcc(newAcc);
@@ -92,9 +92,15 @@ function Play(){
                         setCurState(json["payload"]);
                         setExpectedNote(null);
                     }
-                    else if(json["type"] == "note played"){
-                        setExpectedNote(json["payload"])
-
+                    else if (json["type"] == "note played"){
+                        setExpectedNote(json["payload"]["expected"])
+                        setPlayedNote(json["payload"]["played"])
+                        if (json["payload"]["expected"] == json["payload"]["played"]){
+                            addCorrectNote()
+                        }
+                        else{
+                            addIncorrectNote()
+                        }
                     }
                     
                 }
