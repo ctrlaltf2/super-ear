@@ -92,9 +92,13 @@ function Play(){
                         setExpectedNote(null);
                     }
                     else if (json["type"] == "note played"){
-                        setExpectedNote(json["payload"]["expected"])
-                        setPlayedNote(json["payload"]["played"])
-                        if (json["payload"]["expected"] == json["payload"]["played"]){
+                        let EN = json["payload"]["expected"];
+                        EN = EN.substring(0, EN.length - 1);
+                        let PN = json["payload"]["expected"];
+                        PN = PN.substring(0, PN.length - 1);
+                        setExpectedNote(EN)
+                        setPlayedNote(PN)
+                        if (EN == PN){
                             addCorrectNote()
                         }
                         else{
