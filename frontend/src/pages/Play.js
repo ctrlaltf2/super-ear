@@ -24,13 +24,9 @@ function Play(){
         setHistory(prevHistory => prevHistory.concat([pn], [en]));
         const newAcc = curAcc.map((a, i) =>
         {
-            if (i === 0) {
-                return a + 1;
-            }
-            if (i === 1){
-                return a + 1;
-            }
+            return a + 1;
         });
+        console.log("newAcc");
         setCurAcc(newAcc);
         setCorrect("Correct!");
     };
@@ -39,13 +35,13 @@ function Play(){
         setHistory(prevHistory => prevHistory.concat([pn], [en]));
         const newAcc = curAcc.map((a, i) =>
         {
-            if (i === 0) {
-                return a;
-            }
             if (i === 1){
                 return a + 1;
             }
+            return a;
         });
+        console.log("newAcc");
+        setCurAcc(newAcc);
         setCorrect("Incorrect, Keep Trying!");
     };  
     //component lifecycle (ws connection/disconnection)
