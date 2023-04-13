@@ -83,20 +83,20 @@ function Play(){
 
         const sampler = new Tone.Sampler({
             urls: {
-                "F#1": "F#1.mp3",
-                "C2.mp3": "C2.mp3",
-                "F#2.mp3": "F#2.mp3",
-                "C3.mp3": "C3.mp3",
-                "F#3.mp3": "F#3.mp3",
-                "A3.mp3": "A3.mp3",
-                "C4.mp3": "C4.mp3",
-                "F#4.mp3": "F#4.mp3",
-                "C5.mp3": "C5.mp3",
-                "C6.mp3": "C6.mp3",
+                "F#1": "F%231.mp3",
+                "C2": "C2.mp3",
+                "F#2": "F%232.mp3",
+                "C3": "C3.mp3",
+                "F#3": "F%233.mp3",
+                "A3": "A3.mp3",
+                "C4": "C4.mp3",
+                "F#4": "F%234.mp3",
+                "C5": "C5.mp3",
+                "C6": "C6.mp3",
             },
             release: 1,
-            baseUrl: `${window.location.origin}/guitar/`,
-            // baseUrl: `http://localhost:8000/guitar/`,
+            // baseUrl: `${window.location.origin}/guitar/`,
+            baseUrl: `http://172.81.131.131:8000/guitar/`,
         }).toDestination();
 
         Tone.loaded().then(() => {
