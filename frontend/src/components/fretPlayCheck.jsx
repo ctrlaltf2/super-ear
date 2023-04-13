@@ -1,4 +1,5 @@
 export const FretPlayCheck = (props) => {
+    console.log(props);
     const color = ["bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600", "bg-green-600"];
     const opacity = ["opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0", "opacity-0"];
     const offset = stringNumToOffset();
@@ -36,7 +37,7 @@ export const FretPlayCheck = (props) => {
         'G': [2, 7, 11, 4, 9, 2],
         'G#': [3, 8, 0, 5, 10, 3]};
 
-    if (props.expectedNote != "" && props.playedNote != "") {
+    if ((props.expectedNote !== null) && (props.playedNote !== null)) {
         const expectedNotePos = pos[props.expectedNote][props.stringNum];
         const playedNotePos = pos[props.playedNote][props.stringNum];
 

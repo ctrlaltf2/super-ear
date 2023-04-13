@@ -16,8 +16,8 @@ function Play(){
     const [history, setHistory] = useState([]);
     const [counter, setCounter] = useState("00:00:00");
     const [stringNum, setStringNum] = useState();
-    const [playedNote, setPlayedNote] = useState("");
-    const [expectedNote, setExpectedNote] = useState("");
+    const [playedNote, setPlayedNote] = useState(null);
+    const [expectedNote, setExpectedNote] = useState(null);
 
     //functions for history
     function addCorrectNote(){
@@ -120,12 +120,20 @@ function Play(){
 
                     if (json["type"] === "state") {
                         setCurState(json["payload"]);
-                        setExpectedNote(null);
-                    } else if (json["type"] == "note played"){
+                        // setExpectedNote(null);
+                    } else if (json["type"] === "note played"){
+                        console.log("note played message")
+
                         let EN = json["payload"]["expected"];
+                        console.log("Expected before: ", EN);
+
                         EN = EN.substring(0, EN.length - 1);
+
+                        console.log("Expected after: ", EN);
+
                         let PN = json["payload"]["expected"];
                         PN = PN.substring(0, PN.length - 1);
+                        console.log(EN, PN);
                         setExpectedNote(EN)
                         setPlayedNote(PN)
                         if (EN == PN){
