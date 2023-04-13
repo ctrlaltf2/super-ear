@@ -319,7 +319,7 @@ function Play(){
                             </div>
                         </div>
                         <div className="text-lg text-gray-200 opacity-90 text-center">
-                            Play The Note You Heard
+                            Remediating, Play The Note You Heard
                         </div>
                     </div>
                     {gameStats}
