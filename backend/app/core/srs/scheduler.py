@@ -331,9 +331,9 @@ class V1(Scheduler):
                         print("Item moved to next learning step")
                         item.learning_index += 1
                         return False
-                else:  # reset learning step
-                    print("Item reset to first learning step")
-                    item.learning_index = 0
+                else:  # move back learning step
+                    print("Item going back a learning step")
+                    item.learning_index = max(item.learning_index - 1, 0)
                     return True
 
             case ReviewState.Reviewing:
