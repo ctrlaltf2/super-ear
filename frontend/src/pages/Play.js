@@ -81,6 +81,27 @@ function Play(){
         //create a synth and connect it to the main output (your speakers)
         const synth = new Tone.PolySynth().toDestination();
 
+        const sampler = new Tone.Sampler({
+            urls: {
+                "F#1": "F#1.mp3",
+                "C2.mp3": "C2.mp3",
+                "F#2.mp3": "F#2.mp3",
+                "C3.mp3": "C3.mp3",
+                "F#3.mp3": "F#3.mp3",
+                "A3.mp3": "A3.mp3",
+                "C4.mp3": "C4.mp3",
+                "F#4.mp3": "F#4.mp3",
+                "C5.mp3": "C5.mp3",
+                "C6.mp3": "C6.mp3",
+            },
+            release: 1,
+            baseUrl: `${window.location.origin}/`,
+        }).toDestination();
+
+        Tone.loaded().then(() => {
+            console.log("loaded sampler");
+        });
+
         //play a middle 'C' for the duration of an 8th note
         // synth.triggerAttackRelease("C4", "2n", "+0.3");
 
@@ -112,7 +133,7 @@ function Play(){
                         }
                     } else if(json["type"] === "should play") {
                         try { // why aren't exceptions documented
-                            synth.triggerAttackRelease(json["payload"], "2n", "+0.1");
+                            sampler.triggerAttackRelease(json["payload"], "2n", "+0.1");
                         } catch(err) {
                             console.warn("Error playing note: ", err);
                         }
