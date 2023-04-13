@@ -2,7 +2,6 @@ import React from "react";
 import {useState, useRef, useEffect } from 'react';
 import {Oval} from 'react-loader-spinner';
 import fretboard from '../components/pics/fretboard-notes.png';
-import { FretMatrix } from '../components/FretMatrix';
 import { HistoryBox } from '../components/HistoryBox';
 import { FretPlayCheck } from "../components/fretPlayCheck";
 function Play(){
