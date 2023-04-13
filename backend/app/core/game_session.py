@@ -195,7 +195,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         print(" ".join([str(item.item.content) for item in self._reviewing_queue]))
 
-        self.send_frontend_message("note played", repr(actual_note))
+        to_send = {"expected": repr(expected_note), "played": repr(actual_note)}
+
+        self.send_frontend_message("note played", to_send)
         await self._try_send_next_review()
 
     async def _init_scheduling(self):
