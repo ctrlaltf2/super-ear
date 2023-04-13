@@ -11,8 +11,7 @@ export const PlayButton = (props) => {
             <div className="absolute -inset-1 bg-gradient-to-b from-blue-400 to-blue-800 rounded-full blur-xl opacity-50 group-hover:opacity-100 transition duration-1000 group-hover:duration-1000"></div>
             <NavLink to="/play">
                 <button
-                    onclick={async () => {
-                        print('waiting')
+                    onClick={async () => {
                         await Tone.start()
                         console.log('audio is ready')
                     }}
