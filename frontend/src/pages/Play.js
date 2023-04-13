@@ -93,7 +93,7 @@ function Play(){
         ws.current.onmessage = (event) => {
             const json = JSON.parse(event.data);
             try {
-                if ((json.event == "data")) {
+                if ((json.event = "data")) {
                     console.log(json["type"])
                     console.log(json["payload"])
 
