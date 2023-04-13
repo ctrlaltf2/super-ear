@@ -228,6 +228,10 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
 
         self._send_to_dsp(f"play {expected_freq}")
+        self.send_frontend_message(
+            "should play", repr(SPN.from_str(self._next_item.item.content))
+        )
+
         await self._set_state(self.SessionState.WAITING_FOR_PLAY)
 
     # Called when the user selects a string to study
