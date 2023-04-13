@@ -10,7 +10,7 @@ import * as Tone from 'tone'
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("connection_error");
+    const [curState, setCurState] = useState("waiting_for_dsp");
     const [curNote, setCurNote] = useState(null);
     const [curAcc, setCurAcc] = useState([0, 0]);
     const [correct, setCorrect] = useState("");
@@ -96,7 +96,7 @@ function Play(){
                 if ((json.event == "data")) {
                     console.log(json["type"])
                     console.log(json["payload"])
-                    
+
                     if (json["type"] === "state") {
                         setCurState(json["payload"]);
                         setExpectedNote(null);
