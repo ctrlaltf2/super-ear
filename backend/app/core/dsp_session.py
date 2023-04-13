@@ -84,6 +84,10 @@ class DSPSession:
             self.send_message("error invalid payload (should be float)")
             return
 
+        if payload_as_float < 70:
+            self.send_message("error invalid payload (should be >= 70)")
+            return
+
         lolwhat = self.game_session._process_message("play", payload_as_float)
         print("type lolwhat = ", type(lolwhat))
         await lolwhat
