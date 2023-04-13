@@ -95,7 +95,8 @@ function Play(){
                 "C6.mp3": "C6.mp3",
             },
             release: 1,
-            baseUrl: `${window.location.origin}/`,
+            baseUrl: `${window.location.origin}/guitar/`,
+            // baseUrl: `http://localhost:8000/guitar/`,
         }).toDestination();
 
         Tone.loaded().then(() => {
