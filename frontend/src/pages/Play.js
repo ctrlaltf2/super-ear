@@ -26,14 +26,14 @@ function Play(){
         newAcc[0] += 1;
         newAcc[1] += 1
         setCurAcc(newAcc);
-        setCorrect = "Correct!"
+        setCorrect("Correct!");
     };
     function addIncorrectNote(){
         setHistory(prevHistory => prevHistory.concat([counter], [playedNote], [expectedNote]));
         const newAcc = curAcc.slice();
         newAcc[1] += 1
         setCurAcc(newAcc);
-        setCorrect = "Incorrect, Keep Trying!"
+        setCorrect("Incorrect, Keep Trying!");
     };
 
     //clock functions    
