@@ -11,7 +11,8 @@ function Play(){
     //state declaration
     const [curState, setCurState] = useState("waiting_for_dsp");
     const [curNote, setCurNote] = useState(null);
-    const [curAcc, setCurAcc] = useState([0, 0]);
+    const [curCor, setCurCor] = useState(0);
+    const [curTot, setCurTot] = useState(0);
     const [correct, setCorrect] = useState("");
     const [history, setHistory] = useState([]);
     const [stringNum, setStringNum] = useState();
@@ -22,26 +23,14 @@ function Play(){
     function addCorrectNote(en, pn)
     {
         setHistory(prevHistory => prevHistory.concat([pn], [en]));
-        const newAcc = curAcc.map((a, i) =>
-        {
-            return a + 1;
-        });
-        console.log("newAcc");
-        setCurAcc(newAcc);
+        setCurCor(prevCor => prevCor += 1);
+        setCurTot(prevTot => prevTot += 1);
         setCorrect("Correct!");
     };
     function addIncorrectNote(en, pn)
     {
         setHistory(prevHistory => prevHistory.concat([pn], [en]));
-        const newAcc = curAcc.map((a, i) =>
-        {
-            if (i === 1){
-                return a + 1;
-            }
-            return a;
-        });
-        console.log("newAcc");
-        setCurAcc(newAcc);
+        setCurTot(prevTot => prevTot += 1);
         setCorrect("Incorrect, Keep Trying!");
     };  
     //component lifecycle (ws connection/disconnection)
@@ -149,7 +138,7 @@ function Play(){
                 Session History
             </div>
             <div className="mt-[4%]">
-            <div className = "grid grid-cols-2 text-center text-gray-200 text-sm font-light mb-1">
+            <div className = "grid grid-cols-2 text-center text-white text-md font-light mb-1">
             {
                 ["Played Note", "Expected Note"].map((elem) => {
                     return <h1>{elem}</h1>
@@ -166,7 +155,7 @@ function Play(){
                 Accuracy
             </div>
                 <div className="mt-[5%]">
-                    {curAcc[0]} / {curAcc[1]}
+                    {curCor} / {curTot}
                 </div>
         </div>
         {/**Fret Board */}
@@ -184,9 +173,6 @@ function Play(){
         </div>
     </div>
     );
-
-
-
 
     //Running
     if (curState == "waiting_for_dsp"){
