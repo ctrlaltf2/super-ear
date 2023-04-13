@@ -59,7 +59,7 @@ class DefaultCollections:
             Track.from_list(
                 [
                     ReviewItem(content=repr(SPN.from_str("A3") + offset))
-                    for offset in range(0, 12 + 1)
+                    for offset in range(0, 7 + 1)
                 ],
                 "Test string",
             ),
