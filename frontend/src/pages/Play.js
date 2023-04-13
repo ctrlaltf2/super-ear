@@ -8,10 +8,10 @@ import { FretPlayCheck } from "../components/fretPlayCheck";
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("waiting_for_play");
+    const [curState, setCurState] = useState("connection_error");
     const [curNote, setCurNote] = useState(null);
     const [curAcc, setCurAcc] = useState([0, 0]);
-    const [correct, setCorrect] = useState("Correct!");
+    const [correct, setCorrect] = useState("");
     const [history, setHistory] = useState([]);
     const [counter, setCounter] = useState("00:00:00");
     const [stringNum, setStringNum] = useState();
