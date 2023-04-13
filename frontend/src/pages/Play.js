@@ -100,8 +100,7 @@ function Play(){
                         else{
                             addIncorrectNote()
                         }
-                    }
-                    
+                    }   
                 }
             } catch (err) {
                 setCurState("connection_error");
@@ -112,7 +111,6 @@ function Play(){
     const wsClose = () => {
        ws.current.close()
     }
-
     
     function stringSelector(string){
         setStringNum(string);
