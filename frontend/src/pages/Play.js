@@ -5,6 +5,8 @@ import fretboard from '../components/pics/fretboard-notes.png';
 import { FretMatrix } from '../components/FretMatrix';
 import { HistoryBox } from '../components/HistoryBox';
 import { FretPlayCheck } from "../components/fretPlayCheck";
+import * as Tone from 'tone'
+
 function Play(){
 
     //state declaration
@@ -76,6 +78,13 @@ function Play(){
     }
 
     useEffect(() => {
+        //create a synth and connect it to the main output (your speakers)
+        const synth = new Tone.PolySynth().toDestination();
+
+        //play a middle 'C' for the duration of an 8th note
+        // synth.triggerAttackRelease("C4", "2n", "+0.3");
+
+        // catch all
 
         ws.current.onopen = () => {
           console.log('connected')
@@ -84,25 +93,30 @@ function Play(){
         ws.current.onmessage = (event) => {
             const json = JSON.parse(event.data);
             try {
-                if ((json.event = "data")) {
+                if ((json.event == "data")) {
                     console.log(json["type"])
                     console.log(json["payload"])
                     
-                    if (json["type"] == "state") {
+                    if (json["type"] === "state") {
                         setCurState(json["payload"]);
                         setExpectedNote(null);
                     }
-                    else if (json["type"] == "note played"){
+                    else if (json["type"] === "note played"){
                         setExpectedNote(json["payload"]["expected"])
                         setPlayedNote(json["payload"]["played"])
-                        if (json["payload"]["expected"] == json["payload"]["played"]){
+                        if (json["payload"]["expected"] === json["payload"]["played"]){
                             addCorrectNote()
                         }
                         else{
                             addIncorrectNote()
                         }
+                    } else if(json["type"] === "should play") {
+                        try { // why aren't exceptions documented
+                            synth.triggerAttackRelease(json["payload"], "2n", "+0.1");
+                        } catch(err) {
+                            console.warn("Error playing note: ", err);
+                        }
                     }
-                    
                 }
             } catch (err) {
                 setCurState("connection_error");
