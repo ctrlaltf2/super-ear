@@ -200,6 +200,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             case self.SessionState.REMEDIATING:
                 if actual_note != expected_note:
                     self.send_frontend_message("should play", repr(expected_note))
+                    self.send_to_dsp("play", str(expected_note.to_freq()))
                 else:  # they got it right -> move to next review
                     # copy-paste coding here but whatever expo is soon
                     if self.do_readd:
