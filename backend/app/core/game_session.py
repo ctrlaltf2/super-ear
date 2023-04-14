@@ -155,7 +155,10 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_play(self, payload: float):
         print("GameSessionSocketHandler::_handle_play")
-        if self._state != self.SessionState.WAITING_FOR_PLAY:
+        if self._state not in [
+            self.SessionState.WAITING_FOR_PLAY,
+            self.SessionState.REMEDIATING,
+        ]:
             self._send_to_dsp("warning was not expecting a note play message. ignoring")
             return
 
@@ -176,29 +179,63 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
         note_distance: int = abs(actual_note - expected_note)
         due_prev = deepcopy(self._next_item.due_date)
 
-        do_readd: bool = self._scheduler.review(
-            self._user.collection, self._next_item.item, note_distance, 0
-        )
-        await self._sync_collection()  # sync
-        await self._update_history(
-            self._next_item.item, actual_note, due_prev, self._next_item.item.state
-        )
+        if self._state == self.SessionState.WAITING_FOR_PLAY:
+            self.do_readd: bool = self._scheduler.review(
+                self._user.collection, self._next_item.item, note_distance, 0
+            )
 
-        if do_readd:
-            if len(self._reviewing_queue) > 0:
-                # then insert in a random place that's not at the start- minimize repeats
-                self._reviewing_queue.insert(
-                    random.randint(1, len(self._reviewing_queue)), self._next_item
-                )
-            else:  # just insert at the start
-                self._reviewing_queue.insert(0, self._next_item)
+            await self._sync_collection()  # sync
+            await self._update_history(
+                self._next_item.item, actual_note, due_prev, self._next_item.item.state
+            )
 
-        print(" ".join([str(item.item.content) for item in self._reviewing_queue]))
+        if actual_note != expected_note:
+            await self._set_state(self.SessionState.REMEDIATING)
 
         to_send = {"expected": repr(expected_note), "played": repr(actual_note)}
-
         self.send_frontend_message("note played", to_send)
-        await self._try_send_next_review()
+
+        # Do slightly different things based on if the player was in remediation or not when they played
+        match (self._state):
+            case self.SessionState.REMEDIATING:
+                if actual_note != expected_note:
+                    self.send_frontend_message("should play", repr(expected_note))
+                else:  # they got it right -> move to next review
+                    # copy-paste coding here but whatever expo is soon
+                    if self.do_readd:
+                        if len(self._reviewing_queue) > 0:  # still things to review?
+                            # then insert in a random place that's not at the start- minimize repeats
+                            self._reviewing_queue.insert(
+                                random.randint(1, len(self._reviewing_queue)),
+                                self._next_item,
+                            )
+                        else:  # just insert at the start
+                            self._reviewing_queue.insert(0, self._next_item)
+
+                    print(
+                        " ".join(
+                            [str(item.item.content) for item in self._reviewing_queue]
+                        )
+                    )
+
+                    await self._try_send_next_review()
+
+            case self.SessionState.WAITING_FOR_PLAY:
+                if self.do_readd:
+                    if len(self._reviewing_queue) > 0:  # still things to review?
+                        # then insert in a random place that's not at the start- minimize repeats
+                        self._reviewing_queue.insert(
+                            random.randint(1, len(self._reviewing_queue)),
+                            self._next_item,
+                        )
+                    else:  # just insert at the start
+                        self._reviewing_queue.insert(0, self._next_item)
+
+                print(
+                    " ".join([str(item.item.content) for item in self._reviewing_queue])
+                )
+
+                await self._try_send_next_review()
 
     async def _init_scheduling(self):
         assert self._user is not None, "pre: _init_scheduling called before _user set"
@@ -266,11 +303,12 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         match prev_state:
             case [
+                self.SessionState.SELECTING_STRING,
                 self.SessionState.SCHEDULING,
+                self.SessionState.WAITING_FOR_PLAY,
                 self.SessionState.SCORING,
                 self.SessionState.REMEDIATING,
-                self.SessionState.SCORING,
-                self.SessionState.WAITING_FOR_PLAY,
+                self.SessionState.REVIEW_DONE,
             ]:
                 match next_state:
                     case self.SessionState.WAITING_FOR_DSP:  # --> dsp d/c'd mid-play
