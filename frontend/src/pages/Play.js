@@ -9,15 +9,15 @@ import * as Tone from 'tone'
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("waiting_for_dsp");
+    const [curState, setCurState] = useState("connection_error");
     const [curNote, setCurNote] = useState(null);
     const [curCor, setCurCor] = useState(0);
     const [curTot, setCurTot] = useState(0);
     const [correct, setCorrect] = useState("");
     const [history, setHistory] = useState([]);
     const [stringNum, setStringNum] = useState();
-    const [playedNote, setPlayedNote] = useState(null);
-    const [expectedNote, setExpectedNote] = useState(null);
+    const [playedNote, setPlayedNote] = useState("");
+    const [expectedNote, setExpectedNote] = useState("");
 
     //functions for history
     function addCorrectNote(en, pn)
@@ -176,7 +176,7 @@ function Play(){
 
     //Running
     if (curState == "waiting_for_dsp"){
-        return(
+        return( 
             <div className = "min-h-screen bg-black">
                 <div className = "flex min-h-screen justify-center items-center text-8xl text-white">
                         <div>
@@ -189,7 +189,6 @@ function Play(){
                 </div>
 
         </div> 
-        
     );
         }
     else if (curState == "string_select") {
@@ -342,7 +341,7 @@ function Play(){
                                 Note Expected: {expectedNote}
                             </div>
                         </div>
-                        <div className="text-lg text-gray-200 opacity-90 text-center">
+                        <div className="text-8xl text-gray-200 opacity-90 text-center">
                             Review Done!
                         </div>
                     </div>
