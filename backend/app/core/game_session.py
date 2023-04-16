@@ -171,6 +171,8 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self._reviewing_queue is not None
         ), "pre: _reviewing_queue is None, it should be initialized here"
 
+        assert self.dsp_session is not None, "Dsp session was none"
+
         actual_note: SPN = SPN.from_freq(payload)
         expected_note: SPN = SPN.from_str(self._next_item.item.content)
 
@@ -200,6 +202,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             case self.SessionState.REMEDIATING:
                 if actual_note != expected_note:
                     self.send_frontend_message("should play", repr(expected_note))
+                    self.dsp_session.current_note = expected_note.to_freq()
                     self._send_to_dsp(f"play {expected_note.to_freq()}")
                 else:  # they got it right -> move to next review
                     # copy-paste coding here but whatever expo is soon
@@ -264,6 +267,9 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
 
         # send to DSP the frequeny
         expected_freq = SPN.from_str(self._next_item.item.content).to_freq()
+
+        assert self.dsp_session is not None, "DSP session None"
+        self.dsp_session.current_note = expected_freq
 
         self._send_to_dsp(f"play {expected_freq}")
         self.send_frontend_message(
