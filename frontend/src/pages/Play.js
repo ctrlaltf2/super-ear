@@ -18,7 +18,8 @@ function Play(){
     const [stringNum, setStringNum] = useState();
     const [playedNote, setPlayedNote] = useState(null);
     const [expectedNote, setExpectedNote] = useState(null);
-
+    const [strMes, setStrMes] = useState(null);
+    const [instrument, setInstr] = useState(null);
     //functions for history
     function addCorrectNote(en, pn)
     {
@@ -122,13 +123,41 @@ function Play(){
     
     function stringSelector(string){
         setStringNum(string);
-        const message = JSON.stringify({
+        setCurState("instr_sel");
+        setStrMes(JSON.stringify({
             "type": "string_select",
             "payload": string,
-        });
-        ws.current.send(message);
+        }));
     }
 
+    function instrSelector(instr){
+        setInstr(instr);
+        ws.current.send(strMes);
+    }
+
+
+    function fret(){
+        if (instrument==="guitar"){
+            return(
+                <div className="relative">
+                <img className="w-full h-auto z-0"
+                    src={fretboard} 
+                    alt="fretboard">
+                </img>
+                <FretPlayCheck 
+                    stringNum = {stringNum}
+                    expectedNote = {expectedNote}
+                    playedNote = {playedNote}
+                />
+                </div>
+            );
+        }
+        else {
+            return ( 
+                <div>
+                </div>
+            );
+        }   }
 
     const gameStats = (
         <div className="grid grid-cols-3 w-full justify-center items-center text-center opacity-70">
@@ -160,17 +189,7 @@ function Play(){
         </div>
         {/**Fret Board */}
         {/*img*/}
-        <div className="relative">
-            <img className="w-full h-auto z-0"
-                src={fretboard} 
-                alt="fretboard">
-            </img>
-            <FretPlayCheck 
-                stringNum = {stringNum}
-                expectedNote = {expectedNote}
-                playedNote = {playedNote}
-            />
-        </div>
+        {fret}
     </div>
     );
 
@@ -220,6 +239,23 @@ function Play(){
                 </button>
                 <button onClick={() => stringSelector(5)} className="bg-transparent hover:bg-blue-500 text-gray-200 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
                     E String
+                </button>
+            </div>
+        </div>
+        );
+    }
+
+    else if (curState == "instr_sel") {
+        return(
+        <div className = "min-h-screen bg-black">
+            <h1 className="text-8xl text-white text-center"> Select An Instrument </h1>
+  
+            <div className='flex columns-1 items-center justify-center gap-x-4'>     
+                <button onClick={() => instrSelector("piano")} className="bg-transparent hover:bg-blue-500 text-gray-200 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
+                    Piano
+                </button>
+                <button onClick={() => instrSelector("guitar")} className="bg-transparent hover:bg-blue-500 text-gray-200 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
+                    Guitar
                 </button>
             </div>
         </div>
