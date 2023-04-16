@@ -159,7 +159,7 @@ class GameSessionSocketHandler(tornado.websocket.WebSocketHandler):
             self.SessionState.WAITING_FOR_PLAY,
             self.SessionState.REMEDIATING,
         ]:
-            self._send_to_dsp("warning was not expecting a note play message. ignoring")
+            print("DSP: warning was not expecting a note play message. ignoring")
             return
 
         assert (
