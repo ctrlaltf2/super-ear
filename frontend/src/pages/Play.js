@@ -9,7 +9,7 @@ import * as Tone from 'tone'
 function Play(){
 
     //state declaration
-    const [curState, setCurState] = useState("connection_error");
+    const [curState, setCurState] = useState("waiting_for_dsp");
     const [curNote, setCurNote] = useState(null);
     const [curCor, setCurCor] = useState(0);
     const [curTot, setCurTot] = useState(0);
@@ -154,7 +154,7 @@ function Play(){
             <div className="text-white text-lg font-bold text-center">
                 Accuracy
             </div>
-                <div className="mt-[5%] text-md font-medium">
+                <div className="mt-[5%] text-md text-white font-medium">
                     {curCor} / {curTot}
                 </div>
         </div>
