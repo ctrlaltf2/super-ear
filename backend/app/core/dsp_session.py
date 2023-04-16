@@ -60,7 +60,7 @@ class DSPSession:
         valid_typ = ["play"]
 
         if typ not in valid_typ:
-            self.send_message(f"error invalid message type {typ}")
+            print(f"DSP: error invalid message type {typ}")
             return
 
         match typ:
@@ -75,17 +75,17 @@ class DSPSession:
         logger.debug(f"DSPSession::_handle_play({payload})")
 
         if self.game_session is None:
-            self.send_message("error no game session")
+            print("DSP: error no game session")
             return
 
         try:
             payload_as_float = float(payload)
         except ValueError:
-            self.send_message("error invalid payload (should be float)")
+            print("DSP: error invalid payload (should be float)")
             return
 
         if payload_as_float < 70:
-            self.send_message("error invalid payload (should be >= 70)")
+            print("DSP: error invalid payload (should be >= 70)")
             return
 
         lolwhat = self.game_session._process_message("play", payload_as_float)
