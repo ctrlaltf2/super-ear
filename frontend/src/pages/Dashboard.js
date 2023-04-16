@@ -19,7 +19,6 @@ function Dashboard(){
                 <ProgressBar progressPercentage={30}
                 />
                 </div>
-                <p> You're on a 0 day Streak!</p>
             </div>
         </div>
 
