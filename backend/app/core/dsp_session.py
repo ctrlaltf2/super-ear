@@ -23,10 +23,14 @@ class DSPSession:
     # Paired game session
     game_session: GameSessionSocketHandler | None
 
+    # currently playing note
+    current_note: float | None
+
     # Called on creation of the TCP socket session
     def __init__(self, stream: IOStream):
         self.stream = stream
         self.game_session = None
+        self.current_note = None
 
     # Called on deletion of the TCP socket session
     def __del__(self):
@@ -60,7 +64,9 @@ class DSPSession:
         valid_typ = ["play"]
 
         if typ not in valid_typ:
-            self.send_message(f"error invalid message type {typ}")
+            if self.current_note is not None:
+                self.send_message(f"play {self.current_note}")
+            print(f"DSP: error invalid message type {typ}")
             return
 
         match typ:
@@ -75,17 +81,23 @@ class DSPSession:
         logger.debug(f"DSPSession::_handle_play({payload})")
 
         if self.game_session is None:
-            self.send_message("error no game session")
+            print("DSP: error no game session")
+            if self.current_note is not None:
+                self.send_message(f"play {self.current_note}")
             return
 
         try:
             payload_as_float = float(payload)
         except ValueError:
-            self.send_message("error invalid payload (should be float)")
+            print("DSP: error invalid payload (should be float)")
+            if self.current_note is not None:
+                self.send_message(f"play {self.current_note}")
             return
 
         if payload_as_float < 70:
-            self.send_message("error invalid payload (should be >= 70)")
+            print("DSP: error invalid payload (should be >= 70)")
+            if self.current_note is not None:
+                self.send_message(f"play {self.current_note}")
             return
 
         lolwhat = self.game_session._process_message("play", payload_as_float)
