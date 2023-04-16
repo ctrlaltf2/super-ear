@@ -126,7 +126,7 @@ function Play(){
             "type": "string_select",
             "payload": string,
         });
-        ws.current.send(strMes);
+        ws.current.send(mes);
     }
 
 
