@@ -16,8 +16,8 @@ function Play(){
     const [correct, setCorrect] = useState("");
     const [history, setHistory] = useState([]);
     const [stringNum, setStringNum] = useState();
-    const [playedNote, setPlayedNote] = useState("");
-    const [expectedNote, setExpectedNote] = useState("");
+    const [playedNote, setPlayedNote] = useState(null);
+    const [expectedNote, setExpectedNote] = useState(null);
 
     //functions for history
     function addCorrectNote(en, pn)
