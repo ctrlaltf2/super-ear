@@ -143,11 +143,11 @@ function Play(){
         <div className="grid grid-cols-3 w-full justify-center items-center text-center opacity-70">
         {/*History */}
         <div>
-            <div className="text-white text-lg font-bold text-center">
+            <div className="text-white text-xl font-bold text-center">
                 Session History
             </div>
             <div className="mt-[4%]">
-            <div className = "grid grid-cols-2 text-center text-white text-md font-light mb-1">
+            <div className = "grid grid-cols-2 text-center text-white text-lg font-light mb-1">
             {
                 ["Played Note", "Expected Note"].map((elem) => {
                     return <h1>{elem}</h1>
@@ -160,27 +160,21 @@ function Play(){
         </div>
         {/*Accuracy and session time */}
         <div className="grid grid-cols-1 h-full justify-center items-center text-center font-md">
-            <div className="text-white text-lg font-bold text-center">
+            <div className="text-white text-xl font-bold text-center">
                 Accuracy
             </div>
-                <div className="mt-[5%] text-md text-white font-medium">
+                <div className="mt-[5%] text-lg text-white font-medium">
                     {curCor} / {curTot}
                 </div>
         </div>
         {/**Fret Board */}
         {/*img*/}
-        <div className="relative">
-            <img className="w-full h-auto z-0"
-                src={fretboard} 
-                alt="fretboard">
-            </img>
-            <InstrImg 
-                instr = {instr}
-                stringNum = {stringNum}
-                expectedNote = {expectedNote}
-                playedNote = {playedNote}
-            />
-        </div>
+        <InstrImg 
+            instr = {instr}
+            stringNum = {stringNum}
+            expectedNote = {expectedNote}
+            playedNote = {playedNote}
+        />
     </div>
     );
 

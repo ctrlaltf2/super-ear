@@ -19,7 +19,7 @@ export const InstrImg = (props) => {
     </div>
         );
     }
-    else{
+    else if (props.instr === "piano"){
         return (
             <div className="relative">
                 <img className="w-full h-auto z-0"
