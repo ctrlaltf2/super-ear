@@ -4,6 +4,7 @@ import {Oval} from 'react-loader-spinner';
 import fretboard from '../components/pics/fretboard-notes.png';
 import { HistoryBox } from '../components/HistoryBox';
 import { FretPlayCheck } from "../components/fretPlayCheck";
+import {InstrImg} from "../components/InstrImg";
 import * as Tone from 'tone'
 
 function Play(){
@@ -18,6 +19,7 @@ function Play(){
     const [stringNum, setStringNum] = useState();
     const [playedNote, setPlayedNote] = useState(null);
     const [expectedNote, setExpectedNote] = useState(null);
+    const [instr, setInstr] = useState();
 
     //functions for history
     function addCorrectNote(en, pn)
@@ -120,6 +122,12 @@ function Play(){
        ws.current.close()
     }
     
+
+    function instrSelector(instrument){
+        setCurState("string_select_2");
+        setInstr(instrument);
+    }
+
     function stringSelector(string){
         setStringNum(string);
         const mes = JSON.stringify({
@@ -166,7 +174,8 @@ function Play(){
                 src={fretboard} 
                 alt="fretboard">
             </img>
-            <FretPlayCheck 
+            <InstrImg 
+                instr = {instr}
                 stringNum = {stringNum}
                 expectedNote = {expectedNote}
                 playedNote = {playedNote}
@@ -192,7 +201,26 @@ function Play(){
         </div> 
     );
         }
-    else if (curState == "string_select") {
+    
+
+    else if (curState == "string_select")
+    {
+        return(
+            <div className = "min-h-screen bg-black">
+                <h1 className="text-8xl text-white text-center"> Select An Instrument </h1>
+                <div className='grid-rows-2 w-[100%] text-center items-center justify-center'>     
+                    <button onClick={() => instrSelector("guitar")} className="bg-transparent hover:bg-blue-500 text-gray-200 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
+                        Guitar
+                    </button>
+                    <button onClick={() => instrSelector("piano")} className="bg-transparent hover:bg-blue-500 text-gray-200 font-semibold hover:text-white py-2 px-4 border border-blue-500 hover:border-transparent rounded">
+                        Piano
+                    </button>
+                </div>
+            </div>
+        )
+
+    }
+    else if (curState == "string_select_2") {
         return(
         <div className = "min-h-screen bg-black">
             <h1 className="text-8xl text-white text-center"> Select A String</h1>
